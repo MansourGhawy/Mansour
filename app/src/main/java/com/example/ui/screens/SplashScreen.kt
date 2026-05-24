@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -71,16 +72,15 @@ fun SplashScreen(
                     .size(130.dp)
                     .scale(scale)
                     .background(
-                        color = if (isDark) Color(0x336C5CE7) else Color(0x1F6C5CE7),
+                        color = Color.Transparent,
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Wallet,
-                    contentDescription = "Wallet Logo",
-                    tint = PrimaryPurple,
-                    modifier = Modifier.size(70.dp)
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.app_icon_wallet_1779653277606),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.fillMaxSize().clip(CircleShape)
                 )
             }
             
