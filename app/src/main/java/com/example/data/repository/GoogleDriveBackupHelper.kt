@@ -18,7 +18,7 @@ import java.io.IOException
 
 object GoogleDriveBackupHelper {
     private const val TAG = "GDriveBackup"
-    private const val BACKUP_FILE_NAME = "hesabat_habayeb_backup.json"
+    private const val BACKUP_FILE_NAME = "hesabat_habayeb_backup.hbhabayeb"
     private val client = OkHttpClient()
 
     // Preferences for GDrive backup
@@ -145,7 +145,7 @@ object GoogleDriveBackupHelper {
     }
 
     // Upload Backup content (Create or Update existing)
-    suspend fun uploadBackup(context: Context, backupJsonStr: String): GDriveResult = withContext(Dispatchers.IO) {
+    suspend fun uploadBackup(context: Context, backupBytes: ByteArray): GDriveResult = withContext(Dispatchers.IO) {
         val accessToken = fetchAccessToken(context)
         if (accessToken == null) {
             return@withContext GDriveResult.Error("فشل الحصول على تصريح الوصول لأمان جوجل")
@@ -156,8 +156,8 @@ object GoogleDriveBackupHelper {
             if (fileId != null) {
                 // Update existing file content directly via PATCH upload
                 val updateUrl = "https://www.googleapis.com/upload/drive/v3/files/$fileId?uploadType=media"
-                val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-                val requestBody = backupJsonStr.toRequestBody(mediaType)
+                val mediaType = "application/octet-stream".toMediaTypeOrNull()
+                val requestBody = backupBytes.toRequestBody(mediaType)
                 
                 val request = Request.Builder()
                     .url(updateUrl)
@@ -171,20 +171,20 @@ object GoogleDriveBackupHelper {
                         val sdf = java.text.SimpleDateFormat("yyyy/MM/dd hh:mm a", java.util.Locale.getDefault())
                         val nowStr = sdf.format(java.util.Date())
                         setBackupStatus(context, "النسخة الأخيرة: $nowStr")
-                        return@withContext GDriveResult.Success("تم تحديث النسخة الاحتياطية على درايف بنجاح")
+                        return@withContext GDriveResult.Success("تم تحديث النسخة الاحتياطية على درايف بنجاح".toByteArray(Charsets.UTF_8))
                     } else {
                         Log.e(TAG, "Update upload failed: ${response.code} ${response.message}")
                         return@withContext GDriveResult.Error("خطأ في الاتصال بالدرايف لتحديث الملف: ${response.code}")
                     }
                 }
             } else {
-                // First-time creation process (A: Create File Metadata -> B: Upload raw JSON representation)
+                // First-time creation process (A: Create File Metadata -> B: Upload raw representation)
                 val createMetaUrl = "https://www.googleapis.com/drive/v3/files"
                 val mediaTypeJson = "application/json; charset=utf-8".toMediaTypeOrNull()
                 
                 val metaJson = JSONObject()
                 metaJson.put("name", BACKUP_FILE_NAME)
-                metaJson.put("mimeType", "application/json")
+                metaJson.put("mimeType", "application/octet-stream")
                 val metaRequestBody = metaJson.toString().toRequestBody(mediaTypeJson)
 
                 val createRequest = Request.Builder()
@@ -209,9 +209,10 @@ object GoogleDriveBackupHelper {
 
                 val finalFileId = newFileId ?: return@withContext GDriveResult.Error("فشل الحصول على مُعرِّف الملف السحابي")
 
-                // B: Upload real backup string content to that newly created FileId
+                // B: Upload real backup content to that newly created FileId
                 val uploadUrl = "https://www.googleapis.com/upload/drive/v3/files/$finalFileId?uploadType=media"
-                val uploadRequestBody = backupJsonStr.toRequestBody(mediaTypeJson)
+                val mediaType = "application/octet-stream".toMediaTypeOrNull()
+                val uploadRequestBody = backupBytes.toRequestBody(mediaType)
                 val uploadRequest = Request.Builder()
                     .url(uploadUrl)
                     .addHeader("Authorization", "Bearer $accessToken")
@@ -224,7 +225,7 @@ object GoogleDriveBackupHelper {
                         val sdf = java.text.SimpleDateFormat("yyyy/MM/dd hh:mm a", java.util.Locale.getDefault())
                         val nowStr = sdf.format(java.util.Date())
                         setBackupStatus(context, "النسخة الأخيرة: $nowStr")
-                        return@withContext GDriveResult.Success("تم إنشاء وحفظ أول نسخة احتياطية سحابية بنجاح!")
+                        return@withContext GDriveResult.Success("تم إنشاء وحفظ أول نسخة احتياطية سحابية بنجاح!".toByteArray(Charsets.UTF_8))
                     } else {
                         Log.e(TAG, "Content upload failed: ${response.code} ${response.message}")
                         return@withContext GDriveResult.Error("فشل رفع شفرة المحتوى للملف السحابي")
@@ -259,11 +260,11 @@ object GoogleDriveBackupHelper {
 
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
-                    val jsonContent = response.body?.string()
-                    if (jsonContent.isNullOrBlank()) {
+                    val bytes = response.body?.bytes()
+                    if (bytes == null || bytes.isEmpty()) {
                         return@withContext GDriveResult.Error("ملف النسخة الاحتياطية فارغ")
                     }
-                    return@withContext GDriveResult.Success(jsonContent)
+                    return@withContext GDriveResult.Success(bytes)
                 } else {
                     return@withContext GDriveResult.Error("خطأ في تنزيل البيانات من على خوادم درايف: ${response.code}")
                 }
@@ -276,6 +277,6 @@ object GoogleDriveBackupHelper {
 }
 
 sealed class GDriveResult {
-    data class Success(val data: String) : GDriveResult()
+    data class Success(val data: ByteArray) : GDriveResult()
     data class Error(val message: String) : GDriveResult()
 }

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -34,6 +35,12 @@ fun LockScreen(
     onUnlockSuccess: () -> Unit
 ) {
     val context = LocalContext.current
+
+    // Intercept hardware OS back buttons specifically while lock screen is active
+    BackHandler(enabled = true) {
+        Toast.makeText(context, "الرجاء إدخال رمز الأمان لفتح التطبيق", Toast.LENGTH_SHORT).show()
+    }
+
     var inputPin by remember { mutableStateOf("") }
     var isPinError by remember { mutableStateOf(false) }
     var isBiometricScanning by remember { mutableStateOf(false) }

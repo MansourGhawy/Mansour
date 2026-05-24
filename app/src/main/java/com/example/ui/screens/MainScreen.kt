@@ -300,51 +300,7 @@ fun MainScreen(
         }
 
         // Shift content upward
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Sort Options Menu Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "ترتيب حسب:",
-                fontSize = 12.sp,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
-                modifier = Modifier.padding(end = 8.dp)
-            )
-
-            val options = listOf(
-                Pair(SortOption.NAME, "الاسم"),
-                Pair(SortOption.BALANCE_DESC, "الأعلى ديناً"),
-                Pair(SortOption.LAST_TRANSACTION, "آخر حركة")
-            )
-
-            options.forEach { (opt, title) ->
-                val selected = sortOption == opt
-                val tintColor = if (selected) PrimaryPurple else (if (isDark) Color(0xFF25233D) else Color(0xFFE2E2FF))
-                val textColor = if (selected) Color.White else (if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A))
-
-                Box(
-                    modifier = Modifier
-                        .padding(end = 6.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(tintColor)
-                        .clickable { viewModel.sortOption.value = opt }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = title,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor
-                    )
-                }
-            }
-        }
+        Spacer(modifier = Modifier.height(2.dp))
 
         // Section header details (قائمة الزبائن + العدد)
         Row(
@@ -512,7 +468,7 @@ fun CustomerRow(
                 val lastActivityStr = if (item.lastTransactionTime != null) {
                     val sdf = SimpleDateFormat("yyyy/MM/dd hh:mm a", Locale("ar"))
                     val dateFormatted = sdf.format(Date(item.lastTransactionTime))
-                    "آخر حركة: $dateFormatted"
+                    "آخر تعديل: $dateFormatted"
                 } else {
                     "لا توجد عمليات حالياً"
                 }

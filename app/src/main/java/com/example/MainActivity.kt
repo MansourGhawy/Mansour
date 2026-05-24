@@ -92,27 +92,6 @@ fun AppNavigationContainer(
     val screenHistory = remember { mutableStateListOf<AppScreen>(AppScreen.Splash) }
     val currentScreen = screenHistory.lastOrNull() ?: AppScreen.Dashboard
 
-    // Active bottom navigation tab inside Dashboard screen
-    var activeTab by remember { mutableStateOf(HomeTab.DASHBOARD) }
-
-    // Intercept hardware Android OS back button press
-    BackHandler(enabled = screenHistory.size > 1) {
-        if (screenHistory.size > 1) {
-            screenHistory.removeLast()
-        }
-    }
-
-    // Helper navigators
-    fun navigateTo(screen: AppScreen) {
-        screenHistory.add(screen)
-    }
-
-    fun navigateBack() {
-        if (screenHistory.size > 1) {
-            screenHistory.removeLast()
-        }
-    }
-
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
     val securityPinCode by viewModel.securityPin.collectAsState()
     var isAppUnlocked by remember { mutableStateOf(false) }
@@ -123,13 +102,29 @@ fun AppNavigationContainer(
         }
     }
 
-    if (currentScreen != AppScreen.Splash && isFingerprintEnabled && !isAppUnlocked) {
-        LockScreen(
-            correctPin = securityPinCode,
-            isDark = isDark,
-            onUnlockSuccess = { isAppUnlocked = true }
-        )
-    } else {
+    // Active bottom navigation tab inside Dashboard screen
+    var activeTab by remember { mutableStateOf(HomeTab.DASHBOARD) }
+
+    // Intercept hardware Android OS back button press
+    val isLocked = currentScreen != AppScreen.Splash && isFingerprintEnabled && !isAppUnlocked
+    BackHandler(enabled = screenHistory.size > 1 && !isLocked) {
+        if (screenHistory.size > 1) {
+            screenHistory.removeAt(screenHistory.size - 1)
+        }
+    }
+
+    // Helper navigators
+    fun navigateTo(screen: AppScreen) {
+        screenHistory.add(screen)
+    }
+
+    fun navigateBack() {
+        if (screenHistory.size > 1) {
+            screenHistory.removeAt(screenHistory.size - 1)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = if (isDark) DarkBg else LightBg,
@@ -228,8 +223,11 @@ fun AppNavigationContainer(
                         is AppScreen.Splash -> {
                             SplashScreen(isDark = isDark) {
                                 isAppUnlocked = false // force lock screen evaluation on startup
-                                screenHistory.clear()
-                                screenHistory.add(AppScreen.Dashboard)
+                                if (screenHistory.isNotEmpty()) {
+                                    screenHistory[0] = AppScreen.Dashboard
+                                } else {
+                                    screenHistory.add(AppScreen.Dashboard)
+                                }
                             }
                         }
 
@@ -298,6 +296,14 @@ fun AppNavigationContainer(
                     }
                 }
             }
+        }
+
+        if (isLocked) {
+            LockScreen(
+                correctPin = securityPinCode,
+                isDark = isDark,
+                onUnlockSuccess = { isAppUnlocked = true }
+            )
         }
     }
 }

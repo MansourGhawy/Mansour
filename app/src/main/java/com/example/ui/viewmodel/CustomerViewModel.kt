@@ -38,7 +38,9 @@ enum class SortOption {
 }
 
 class CustomerViewModel(application: Application) : AndroidViewModel(application) {
-    private lateinit var repository: CustomerRepository
+    private var repository: CustomerRepository = CustomerRepository(
+        AppDatabase.getDatabase(application).customerDao()
+    )
     
     // UI Theme state
     private val _isDarkTheme = MutableStateFlow(false)
@@ -142,15 +144,15 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             _driveSyncing.value = true
             val ctx = getApplication<Application>()
-            val backupData = exportBackup()
-            if (backupData == "فشل تصدير البيانات") {
+            val binaryData = com.example.data.repository.BackupHelper.createSingleBinaryBackup(ctx)
+            if (binaryData == null) {
                 _statusMessage.emit("فشل تصدير البيانات محلياً")
                 _driveSyncing.value = false
                 return@launch
             }
-            when (val result = com.example.data.repository.GoogleDriveBackupHelper.uploadBackup(ctx, backupData)) {
+            when (val result = com.example.data.repository.GoogleDriveBackupHelper.uploadBackup(ctx, binaryData)) {
                 is com.example.data.repository.GDriveResult.Success -> {
-                    _statusMessage.emit(result.data)
+                    _statusMessage.emit("تم مزامنة النسخة السحابية بنجاح")
                     _lastBackupStatus.value = com.example.data.repository.GoogleDriveBackupHelper.getBackupStatus(ctx)
                     triggerVibration()
                 }
@@ -169,9 +171,18 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
             val ctx = getApplication<Application>()
             when (val result = com.example.data.repository.GoogleDriveBackupHelper.downloadBackup(ctx)) {
                 is com.example.data.repository.GDriveResult.Success -> {
-                    val importSuccess = importBackup(result.data)
+                    val importSuccess = com.example.data.repository.BackupHelper.restoreSingleBinaryBackup(ctx, result.data)
                     if (importSuccess) {
-                        _statusMessage.emit("تم استرجاع النسخة الاحتياطية من جوجل درايف بنجاح")
+                        try {
+                            val database = AppDatabase.getDatabase(ctx)
+                            repository = CustomerRepository(database.customerDao())
+                            _statusMessage.emit("تم استرجاع النسخة الاحتياطية من جوجل درايف بنجاح")
+                            triggerVibration()
+                        } catch (e: Exception) {
+                            _statusMessage.emit("فشل إعادة تشغيل قاعدة البيانات المسترجعة")
+                        }
+                    } else {
+                        _statusMessage.emit("فشل معالجة ملف الاسترجاع السحابي")
                     }
                 }
                 is com.example.data.repository.GDriveResult.Error -> {
@@ -191,9 +202,9 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
                     val lastBackup = com.example.data.repository.GoogleDriveBackupHelper.getLastBackupTime(ctx)
                     val diff24h = 24 * 3600 * 1000L
                     if (System.currentTimeMillis() - lastBackup > diff24h) {
-                        val backupData = exportBackup()
-                        if (backupData != "فشل تصدير البيانات") {
-                            com.example.data.repository.GoogleDriveBackupHelper.uploadBackup(ctx, backupData)
+                        val binaryData = com.example.data.repository.BackupHelper.createSingleBinaryBackup(ctx)
+                        if (binaryData != null) {
+                            com.example.data.repository.GoogleDriveBackupHelper.uploadBackup(ctx, binaryData)
                             _lastBackupStatus.value = com.example.data.repository.GoogleDriveBackupHelper.getBackupStatus(ctx)
                         }
                     }
@@ -264,6 +275,7 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Triple(0.0, 0.0, 0.0))
 
     // Transactions for the currently selected customer
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val selectedCustomerTransactions: StateFlow<List<Transaction>> = _selectedCustomerId
         .flatMapLatest { id ->
             if (id != null) {

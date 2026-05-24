@@ -117,7 +117,7 @@ fun TransactionForm(
     
     // Form fields
     var txType by remember { mutableStateOf(defaultType) }
-    var amountStr by remember { mutableStateOf("1000") }
+    var amountStr by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var calTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
 
