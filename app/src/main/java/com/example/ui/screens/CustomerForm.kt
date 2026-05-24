@@ -1,5 +1,13 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.ContactsContract
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,12 +18,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -24,6 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.ui.viewmodel.CustomerViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +52,70 @@ fun CustomerForm(
 
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+
+    val contactPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact(),
+        onResult = { uri: Uri? ->
+            uri?.let { contactUri ->
+                val projection = arrayOf(
+                    ContactsContract.Contacts._ID,
+                    ContactsContract.Contacts.DISPLAY_NAME,
+                    ContactsContract.Contacts.HAS_PHONE_NUMBER
+                )
+                
+                context.contentResolver.query(contactUri, projection, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val nameIndex = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME)
+                        val idIndex = cursor.getColumnIndex(ContactsContract.Contacts._ID)
+                        val hasPhoneIndex = cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                        
+                        if (nameIndex != -1) {
+                            val contactName = cursor.getString(nameIndex)
+                            name = contactName ?: ""
+                            if (name.isNotBlank()) nameError = false
+                        }
+                        
+                        if (hasPhoneIndex != -1 && idIndex != -1) {
+                            val hasPhone = cursor.getString(hasPhoneIndex) == "1"
+                            val contactId = cursor.getString(idIndex)
+                            
+                            if (hasPhone) {
+                                val phonesCursor = context.contentResolver.query(
+                                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                                    arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                                    "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                                    arrayOf(contactId),
+                                    null
+                                )
+                                
+                                phonesCursor?.use { pCursor ->
+                                    if (pCursor.moveToFirst()) {
+                                        val numberIndex = pCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                                        if (numberIndex != -1) {
+                                            val number = pCursor.getString(numberIndex)
+                                            phone = number ?: ""
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                contactPickerLauncher.launch(null)
+            } else {
+                Toast.makeText(context, "الرجاء إعطاء صلاحية قراءة جهات الاتصال", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -136,6 +211,17 @@ fun CustomerForm(
                 label = { Text("رقم الهاتف (اختياري)") },
                 placeholder = { Text("مثال: 777XXXXXX") },
                 leadingIcon = { Icon(Icons.Default.Phone, contentDescription = "رقم الهاتف") },
+                trailingIcon = {
+                    IconButton(onClick = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                            contactPickerLauncher.launch(null)
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                        }
+                    }) {
+                        Icon(Icons.Default.Contacts, contentDescription = "اختر جهة اتصال", tint = PrimaryPurple)
+                    }
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Phone,
                     imeAction = ImeAction.Next

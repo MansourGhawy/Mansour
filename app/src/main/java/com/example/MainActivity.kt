@@ -297,7 +297,11 @@ fun AppNavigationContainer(
             }
         }
 
-        if (isLocked) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isLocked,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut()
+        ) {
             LockScreen(
                 correctPin = securityPinCode,
                 isDark = isDark,

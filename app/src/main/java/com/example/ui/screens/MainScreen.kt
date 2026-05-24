@@ -297,20 +297,26 @@ fun MainScreen(
             }
         }
 
-        // Shift content upward
-        Spacer(modifier = Modifier.height(2.dp))
+        // Vertical space optimization: reduce the spacer and use a zero-height offset compensator since the cards were offset by -16.dp.
+        Spacer(modifier = Modifier.height(0.dp))
+
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            thickness = 0.5.dp,
+            color = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5)
+        )
 
         // Section header details (قائمة الزبائن + العدد)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "قائمة الزبائن",
-                fontSize = 16.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isDark) Color.White else Color(0xFF2D3436)
             )
@@ -319,11 +325,11 @@ fun MainScreen(
                 modifier = Modifier
                     .clip(RoundedCornerShape(100.dp))
                     .background(PrimaryPurple.copy(alpha = 0.12f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = "${customersList.size} " + if (customersList.size >= 11) "زبوناً" else "زبائن",
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryPurple
                 )
@@ -370,7 +376,7 @@ fun MainScreen(
                     .weight(1f)
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 80.dp)
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 0.dp, bottom = 80.dp)
             ) {
                 items(customersList, key = { it.customer.id }) { item ->
                     CustomerRow(
