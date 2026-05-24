@@ -499,8 +499,8 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Backup as base64 or plaintext JSON
-    fun exportBackup(): String {
-        return try {
+    suspend fun exportBackup(): String = withContext(Dispatchers.IO) {
+        try {
             val list = customersWithBalances.value
             val root = JSONObject()
             val custArray = JSONArray()
@@ -538,52 +538,52 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun importBackup(jsonString: String): Boolean {
-        return try {
-            val root = JSONObject(jsonString)
-            if (!root.has("app") || root.getString("app") != "hesabat_habayeb") {
-                viewModelScope.launch { _statusMessage.emit("ملف النسخة الاحتياطية غير صالح") }
-                return false
-            }
-            
-            val custArray = root.getJSONArray("data")
-            viewModelScope.launch {
-                // Clear existing database
-                repository.clearAllData()
-                
-                for (i in 0 until custArray.length()) {
-                    val cObj = custArray.getJSONObject(i)
-                    val customer = Customer(
-                        name = cObj.getString("name"),
-                        phone = cObj.optString("phone", ""),
-                        notes = cObj.optString("notes", ""),
-                        createdAt = cObj.optLong("createdAt", System.currentTimeMillis())
-                    )
-                    val customerId = repository.insertCustomer(customer).toInt()
+    fun importBackup(jsonString: String) {
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    val root = JSONObject(jsonString)
+                    if (!root.has("app") || root.getString("app") != "hesabat_habayeb") {
+                        _statusMessage.emit("ملف النسخة الاحتياطية غير صالح")
+                        return@withContext
+                    }
                     
-                    val transArray = cObj.optJSONArray("transactions")
-                    if (transArray != null) {
-                        for (j in 0 until transArray.length()) {
-                            val tObj = transArray.getJSONObject(j)
-                            val transaction = Transaction(
-                                customerId = customerId,
-                                amount = tObj.getDouble("amount"),
-                                type = tObj.getString("type"),
-                                notes = tObj.optString("notes", ""),
-                                timestamp = tObj.optLong("timestamp", System.currentTimeMillis())
-                            )
-                            repository.insertTransaction(transaction)
+                    val custArray = root.getJSONArray("data")
+                    // Clear existing database
+                    repository.clearAllData()
+                    
+                    for (i in 0 until custArray.length()) {
+                        val cObj = custArray.getJSONObject(i)
+                        val customer = Customer(
+                            name = cObj.getString("name"),
+                            phone = cObj.optString("phone", ""),
+                            notes = cObj.optString("notes", ""),
+                            createdAt = cObj.optLong("createdAt", System.currentTimeMillis())
+                        )
+                        val customerId = repository.insertCustomer(customer).toInt()
+                        
+                        val transArray = cObj.optJSONArray("transactions")
+                        if (transArray != null) {
+                            for (j in 0 until transArray.length()) {
+                                val tObj = transArray.getJSONObject(j)
+                                val transaction = Transaction(
+                                    customerId = customerId,
+                                    amount = tObj.getDouble("amount"),
+                                    type = tObj.getString("type"),
+                                    notes = tObj.optString("notes", ""),
+                                    timestamp = tObj.optLong("timestamp", System.currentTimeMillis())
+                                )
+                                repository.insertTransaction(transaction)
+                            }
                         }
                     }
                 }
                 _statusMessage.emit("تم استرجاع النسخة الاحتياطية بنجاح")
                 triggerVibration()
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                _statusMessage.emit("فشل استيراد النسخة الاحتياطية: تنسيق خاطئ")
             }
-            true
-        } catch (t: Throwable) {
-            t.printStackTrace()
-            viewModelScope.launch { _statusMessage.emit("فشل استيراد النسخة الاحتياطية: تنسيق خاطئ") }
-            false
         }
     }
 }

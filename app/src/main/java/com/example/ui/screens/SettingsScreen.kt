@@ -32,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.viewmodel.CustomerViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,8 +59,8 @@ fun SettingsScreen(
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
+            val task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(result.data)
             val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
             if (account != null) {
                 viewModel.refreshGoogleDriveState()
@@ -81,6 +82,8 @@ fun SettingsScreen(
     var showDisableLockConfirmDialog by remember { mutableStateOf(false) }
     var disablePinConfirmInput by remember { mutableStateOf("") }
     var disablePinConfirmError by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -186,8 +189,10 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                backupString = viewModel.exportBackup()
-                                showBackupDialog = true
+                                coroutineScope.launch {
+                                    backupString = viewModel.exportBackup()
+                                    showBackupDialog = true
+                                }
                             }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -867,10 +872,8 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         if (restoreInputString.isNotBlank()) {
-                            val success = viewModel.importBackup(restoreInputString)
-                            if (success) {
-                                showRestoreDialog = false
-                            }
+                            viewModel.importBackup(restoreInputString)
+                            showRestoreDialog = false
                         } else {
                             Toast.makeText(context, "الرمز فارغ، يرجى لصق شفرة صالحة", Toast.LENGTH_SHORT).show()
                         }

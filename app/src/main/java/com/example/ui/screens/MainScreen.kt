@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.viewmodel.CustomerViewModel
 import com.example.ui.viewmodel.CustomerWithBalance
-import com.example.ui.viewmodel.SortOption
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,7 +39,6 @@ fun MainScreen(
     onCustomerClick: (Int) -> Unit
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
-    val sortOption by viewModel.sortOption.collectAsState()
     var isSearching by remember { mutableStateOf(false) }
     val customersList by viewModel.customersWithBalances.collectAsState()
     val summary by viewModel.financialSummary.collectAsState()

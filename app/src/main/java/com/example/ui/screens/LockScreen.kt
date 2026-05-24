@@ -38,7 +38,7 @@ fun LockScreen(
 
     // Intercept hardware OS back buttons specifically while lock screen is active
     BackHandler(enabled = true) {
-        Toast.makeText(context, "الرجاء إدخال رمز الأمان لفتح التطبيق", Toast.LENGTH_SHORT).show()
+        // Do nothing to prevent exiting, no toasts avoiding overload on InputDispatcher
     }
 
     var inputPin by remember { mutableStateOf("") }

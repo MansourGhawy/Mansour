@@ -223,10 +223,9 @@ fun AppNavigationContainer(
                         is AppScreen.Splash -> {
                             SplashScreen(isDark = isDark) {
                                 isAppUnlocked = false // force lock screen evaluation on startup
-                                if (screenHistory.isNotEmpty()) {
-                                    screenHistory[0] = AppScreen.Dashboard
-                                } else {
-                                    screenHistory.add(AppScreen.Dashboard)
+                                screenHistory.add(AppScreen.Dashboard)
+                                if (screenHistory.contains(AppScreen.Splash)) {
+                                    screenHistory.remove(AppScreen.Splash)
                                 }
                             }
                         }
