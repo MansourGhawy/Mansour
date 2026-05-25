@@ -404,6 +404,13 @@ fun CustomerDetail(
                             fontWeight = FontWeight.Bold,
                             color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "اضغط على الأزرار بالأسفل لتسجيل أول حركة مالية للزبون",
+                            fontSize = 12.sp,
+                            color = if (isDark) Color(0xFF747D8C) else Color(0xFF8C90A6),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             } else {
@@ -623,6 +630,12 @@ fun printCustomerStatement(context: Context, customer: Customer, transactions: L
     val printManager = context.getSystemService(Context.PRINT_SERVICE) as android.print.PrintManager
     val jobName = "Hesabat_Habayeb_${customer.name}"
     
+    val prefs = context.getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE)
+    val bName = prefs.getString("business_name", "حسابات حبايب") ?: "حسابات حبايب"
+    val bPhone = prefs.getString("business_phone", "777777777") ?: "777777777"
+    val bAddress = prefs.getString("business_address", "اليمن") ?: "اليمن"
+    val bNotes = prefs.getString("business_notes", "نسعد لخدمتكم دائماً") ?: "نسعد لخدمتكم دائماً"
+    
     val htmlContent = buildString {
         append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>")
         append("body { font-family: sans-serif; direction: rtl; padding: 20px; color: #2D3436; }")
@@ -643,8 +656,9 @@ fun printCustomerStatement(context: Context, customer: Customer, transactions: L
         append("</style></head><body>")
         
         append("<div class='header'>")
-        append("<h1>حسابات حبايب</h1>")
-        append("<p>كشف حساب زبون تفصيلي وموثوق</p>")
+        append("<h1>$bName</h1>")
+        append("<p>كشف حساب زبون تفصيلي وموثوق | هاتف: $bPhone</p>")
+        append("<p>العنوان: $bAddress</p>")
         append("</div>")
         
         append("<table class='info-table'>")
@@ -690,7 +704,8 @@ fun printCustomerStatement(context: Context, customer: Customer, transactions: L
         append("</div>")
         
         append("<div class='footer'>")
-        append("<p>تم توليد هذا الكشف عبر تطبيق حسابات حبايب - فريق قطينه سوفت</p>")
+        append("<p>$bNotes</p>")
+        append("<p>تم توليد هذا الكشف عبر تطبيق $bName - نظام إدارة المعاملات المالية والديون</p>")
         append("</div>")
         
         append("</body></html>")

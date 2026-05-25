@@ -5,7 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -100,13 +101,14 @@ fun MainScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+                .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
                 .background(
                     Brush.linearGradient(
                         colors = listOf(PrimaryPurple, Color(0xFF8C7EF2))
                     )
                 )
-                .padding(top = 28.dp, bottom = 36.dp, start = 20.dp, end = 20.dp)
+                .statusBarsPadding()
+                .padding(top = 10.dp, bottom = 22.dp, start = 20.dp, end = 20.dp)
         ) {
             // Header Top Row: Logo & App title + Subtitle with Toggled Search Block
             Row(
@@ -303,7 +305,7 @@ fun MainScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Main Balance Card inside Header with sleek background
             Box(
@@ -312,7 +314,7 @@ fun MainScreen(
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.White.copy(alpha = 0.18f))
                     .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
@@ -354,7 +356,7 @@ fun MainScreen(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val isGreenActive = filterOption == com.example.ui.viewmodel.FilterOption.RECEIVABLES
-            val greenScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isGreenActive) 1.05f else 1.0f)
+            val greenScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isGreenActive && !isSelectionMode) 1.05f else 1.0f)
 
             // Stats Card 1: لي عند الناس (Debts due to me)
             Card(
@@ -362,7 +364,7 @@ fun MainScreen(
                     .weight(1f)
                     .scale(greenScale)
                     .clip(RoundedCornerShape(18.dp))
-                    .clickable {
+                    .clickable(enabled = !isSelectionMode) {
                         keyboardController?.hide()
                         if (isGreenActive) {
                             viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
@@ -373,8 +375,8 @@ fun MainScreen(
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                border = BorderStroke(if (isGreenActive) 2.dp else 1.dp, if (isGreenActive) PositiveGreen else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
-                elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive) 8.dp else 0.dp)
+                border = BorderStroke(if (isGreenActive && !isSelectionMode) 2.dp else 1.dp, if (isGreenActive && !isSelectionMode) PositiveGreen else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 8.dp else 0.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -415,7 +417,7 @@ fun MainScreen(
             }
 
             val isRedActive = filterOption == com.example.ui.viewmodel.FilterOption.PAYABLES
-            val redScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isRedActive) 1.05f else 1.0f)
+            val redScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isRedActive && !isSelectionMode) 1.05f else 1.0f)
 
             // Stats Card 2: علي للناس (Debts I owe to others)
             Card(
@@ -423,7 +425,7 @@ fun MainScreen(
                     .weight(1f)
                     .scale(redScale)
                     .clip(RoundedCornerShape(18.dp))
-                    .clickable {
+                    .clickable(enabled = !isSelectionMode) {
                         keyboardController?.hide()
                         if (isRedActive) {
                             viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
@@ -434,8 +436,8 @@ fun MainScreen(
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                border = BorderStroke(if (isRedActive) 2.dp else 1.dp, if (isRedActive) NegativeRed else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
-                elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive) 8.dp else 0.dp)
+                border = BorderStroke(if (isRedActive && !isSelectionMode) 2.dp else 1.dp, if (isRedActive && !isSelectionMode) NegativeRed else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 8.dp else 0.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -563,26 +565,61 @@ fun MainScreen(
                             Text(text = "إضافة كزبون جديد", fontWeight = FontWeight.Bold)
                         }
                     } else {
+                        val filter = filterOption
+                        val extIcon = if (filter == com.example.ui.viewmodel.FilterOption.RECEIVABLES) {
+                            Icons.Default.TrendingUp
+                        } else if (filter == com.example.ui.viewmodel.FilterOption.PAYABLES) {
+                            Icons.Default.TrendingDown
+                        } else {
+                            Icons.Default.FolderOpen
+                        }
+                        
                         Icon(
-                            imageVector = Icons.Default.FolderOpen,
+                            imageVector = extIcon,
                             contentDescription = "Empty",
                             tint = if (isDark) Color(0xFF323048) else Color(0xFFE2E2FF),
                             modifier = Modifier.size(90.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        
+                        val titleText = when (filter) {
+                            com.example.ui.viewmodel.FilterOption.RECEIVABLES -> "لا توجد ديون مستحقة لك"
+                            com.example.ui.viewmodel.FilterOption.PAYABLES -> "لا توجد مبالغ مستحقة عليك"
+                            else -> "لا يوجد زبائن حالياً"
+                        }
+                        
+                        val subtitleText = when (filter) {
+                            com.example.ui.viewmodel.FilterOption.RECEIVABLES -> "رائع! جميع زبائنك قاموا بتسديد ديونهم أو ليس عليهم التزامات حالياً."
+                            com.example.ui.viewmodel.FilterOption.PAYABLES -> "ممتاز! ليس عليك أي ديون أو مستحقات مالية للآخرين حالياً."
+                            else -> "اضغط على زر (+) في الأسفل لإضافة زبونك الأول"
+                        }
+                        
                         Text(
-                            text = "لا يوجد زبائن حالياً",
+                            text = titleText,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "اضغط على زر (+) في الأسفل لإضافة زبونك الأول",
+                            text = subtitleText,
                             fontSize = 12.sp,
                             color = if (isDark) Color(0xFF747D8C) else Color(0xFF747D8C),
                             textAlign = TextAlign.Center
                         )
+                        
+                        if (filter != com.example.ui.viewmodel.FilterOption.ALL) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { 
+                                    viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(text = "عرض جميع الزبائن", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -605,6 +642,10 @@ fun MainScreen(
                         onLongClick = {
                             if (!isSelectionMode) {
                                 selectedCustomers.add(item)
+                                isSearching = false
+                                viewModel.searchQuery.value = ""
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
                             }
                         },
                         onClick = {
@@ -664,10 +705,12 @@ fun CustomerRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { onLongClick() },
+                    onTap = { onClick() }
+                )
+            }
             .testTag("customer_item_${item.customer.id}"),
         colors = CardDefaults.cardColors(containerColor = bgCardColor),
         border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor)
@@ -708,22 +751,30 @@ fun CustomerRow(
                     val normQuery = com.example.utils.normalizeArabic(searchQuery)
                     val startIndex = normName.indexOf(normQuery)
                     if (startIndex >= 0 && startIndex + normQuery.length <= item.customer.name.length) {
-                        searchHighlighted = true
-                        val endIndex = startIndex + normQuery.length
-                        Text(
-                            text = androidx.compose.ui.text.buildAnnotatedString {
+                        var tempHighText: androidx.compose.ui.text.AnnotatedString? = null
+                        try {
+                            val endIndex = startIndex + normQuery.length
+                            tempHighText = androidx.compose.ui.text.buildAnnotatedString {
                                 append(item.customer.name.substring(0, startIndex))
                                 withStyle(style = androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Black, background = PrimaryPurple.copy(alpha=0.3f))) {
                                     append(item.customer.name.substring(startIndex, endIndex))
                                 }
                                 append(item.customer.name.substring(endIndex))
-                            },
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (isDark) Color.White else Color(0xFF2D3436),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                            }
+                            searchHighlighted = true
+                        } catch (e: Exception) {
+                            searchHighlighted = false
+                        }
+                        if (tempHighText != null) {
+                            Text(
+                                text = tempHighText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isDark) Color.White else Color(0xFF2D3436),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
                 

@@ -168,6 +168,106 @@ fun SettingsScreen(
                 }
             }
 
+            // Group 1.5: Business Profile Settings
+            Text(
+                text = "بيانات المتجر والنشاط التجاري",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val prefs = remember { context.getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE) }
+                    var bName by remember { mutableStateOf(prefs.getString("business_name", "حسابات حبايب") ?: "حسابات حبايب") }
+                    var bPhone by remember { mutableStateOf(prefs.getString("business_phone", "777777777") ?: "777777777") }
+                    var bAddress by remember { mutableStateOf(prefs.getString("business_address", "اليمن") ?: "اليمن") }
+                    var bNotes by remember { mutableStateOf(prefs.getString("business_notes", "نسعد لخدمتكم دائماً") ?: "نسعد لخدمتكم دائماً") }
+
+                    OutlinedTextField(
+                        value = bName,
+                        onValueChange = { 
+                            bName = it
+                            prefs.edit().putString("business_name", it).apply()
+                        },
+                        label = { Text("اسم المحل / النشاط التجاري") },
+                        modifier = Modifier.fillMaxWidth().testTag("business_name_input"),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            focusedLabelColor = PrimaryPurple,
+                            focusedTextColor = if (isDark) Color.White else Color.Black,
+                            unfocusedTextColor = if (isDark) Color.White else Color.Black
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = bPhone,
+                        onValueChange = { 
+                            bPhone = it
+                            prefs.edit().putString("business_phone", it).apply()
+                        },
+                        label = { Text("رقم هاتف المحل") },
+                        modifier = Modifier.fillMaxWidth().testTag("business_phone_input"),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            focusedLabelColor = PrimaryPurple,
+                            focusedTextColor = if (isDark) Color.White else Color.Black,
+                            unfocusedTextColor = if (isDark) Color.White else Color.Black
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = bAddress,
+                        onValueChange = { 
+                            bAddress = it
+                            prefs.edit().putString("business_address", it).apply()
+                        },
+                        label = { Text("عنوان النشاط") },
+                        modifier = Modifier.fillMaxWidth().testTag("business_address_input"),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            focusedLabelColor = PrimaryPurple,
+                            focusedTextColor = if (isDark) Color.White else Color.Black,
+                            unfocusedTextColor = if (isDark) Color.White else Color.Black
+                        )
+                    )
+
+                    OutlinedTextField(
+                        value = bNotes,
+                        onValueChange = { 
+                            bNotes = it
+                            prefs.edit().putString("business_notes", it).apply()
+                        },
+                        label = { Text("ملاحظات تذييل الفاتورة والكشف") },
+                        modifier = Modifier.fillMaxWidth().testTag("business_notes_input"),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            focusedLabelColor = PrimaryPurple,
+                            focusedTextColor = if (isDark) Color.White else Color.Black,
+                            unfocusedTextColor = if (isDark) Color.White else Color.Black
+                        )
+                    )
+                }
+            }
+
             // Group 2: Backup and restore options
             Text(
                 text = "النسخ الاحتياطي وحماية البيانات",
