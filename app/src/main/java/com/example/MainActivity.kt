@@ -1,6 +1,7 @@
 package com.example
 
 import android.os.Bundle
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -8,6 +9,19 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -107,11 +121,23 @@ fun AppNavigationContainer(
     // Active bottom navigation tab inside Dashboard screen
     var activeTab by remember { mutableStateOf(HomeTab.DASHBOARD) }
 
+    val activity = (LocalContext.current as? androidx.activity.ComponentActivity)
+    val prefs = remember { context.getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE) }
+    var showExitDialog by remember { mutableStateOf(false) }
+
     // Intercept hardware Android OS back button press
     val isLocked = currentScreen != AppScreen.Splash && isFingerprintEnabled && !isAppUnlocked
-    BackHandler(enabled = screenHistory.size > 1 && !isLocked) {
+    BackHandler(enabled = !isLocked) {
         if (screenHistory.size > 1) {
             screenHistory.removeAt(screenHistory.size - 1)
+        } else {
+            // Check skip_exit_dialog setting
+            val skipExitDialog = prefs.getBoolean("skip_exit_dialog", false)
+            if (skipExitDialog) {
+                activity?.finish()
+            } else {
+                showExitDialog = true
+            }
         }
     }
 
@@ -127,6 +153,69 @@ fun AppNavigationContainer(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        if (showExitDialog) {
+            var donotShowAgain by remember { mutableStateOf(false) }
+            AlertDialog(
+                onDismissRequest = { showExitDialog = false },
+                title = {
+                    Text(
+                        text = "Confirm Exit",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Are you sure you want to exit Habayeb Accounts?\n\nهل أنت متأكد من رغبتك في الخروج من تطبيق حسابات حبايب؟",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { donotShowAgain = !donotShowAgain }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Checkbox(
+                                checked = donotShowAgain,
+                                onCheckedChange = { donotShowAgain = it },
+                                modifier = Modifier.testTag("skip_exit_checkbox")
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Don't show this again. | عدم الإظهار مجدداً",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (donotShowAgain) {
+                                prefs.edit().putBoolean("skip_exit_dialog", true).apply()
+                            }
+                            showExitDialog = false
+                            activity?.finish()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.testTag("exit_confirm_button")
+                    ) {
+                        Text("Exit")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showExitDialog = false },
+                        modifier = Modifier.testTag("exit_dismiss_button")
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = if (isDark) DarkBg else LightBg,

@@ -842,21 +842,55 @@ fun SettingsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "حسابات حبايب وشركاؤه",
+                        "تطبيق حسابات حبايب",
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         color = PrimaryPurple,
                         textAlign = TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "برنامج محلي بالكامل لحفظ السجلات والديون، من تصميم وتطوير فريق قطينه للبرمجيات",
-                        fontSize = 11.sp,
-                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 16.sp
-                    )
                     Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "تصميم وتطوير م/منصور قطينه للبرمجيات",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color.White else Color(0xFF2D3436),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                try {
+                                    val intent = android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://wa.me/967774004399")
+                                    )
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "فشل فتح تطبيق WhatsApp", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .background(Color(0xFF2ECC71).copy(alpha = 0.15f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Chat,
+                            contentDescription = "WhatsApp Link",
+                            tint = Color(0xFF2ECC71),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "WhatsApp: 00967774004399",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2ECC71),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         "الإصدار: v1.0.0 (بدون إنترنت آمن)\nأندرويد متوافق مع نظام كيتكات ومستويات API 24+",
                         fontSize = 10.sp,
@@ -871,29 +905,72 @@ fun SettingsScreen(
 
     // Confirmation Popup Dialog for wipe
     if (showClearConfirmDialog) {
+        var inputPhrase by remember { mutableStateOf("") }
+        var inputError by remember { mutableStateOf(false) }
         AlertDialog(
-            onDismissRequest = { showClearConfirmDialog = false },
+            onDismissRequest = { 
+                showClearConfirmDialog = false 
+                inputPhrase = ""
+                inputError = false
+            },
             title = {
                 Text("تأكيد مسح كافة البيانات وجدول العمليات", color = NegativeRed, fontWeight = FontWeight.Bold)
             },
             text = {
-                Text(
-                    "تحذير صارم: هذا الإجراء سيمحو كافة ديون الزبائن والتسجيلات وجميع البيانات من على ذاكرة الهاتف بشكل نهائي.\nهل تود الاستمرار حقاً؟"
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "تحذير صارم: هذا الإجراء سيمحو كافة ديون الزبائن والتسجيلات وجميع البيانات من على ذاكرة الهاتف بشكل نهائي.\n\n" +
+                        "كإجراء أمان إضافي، سأقوم بأخذ نسخة احتياطية محلية طارئة لحفظها كشبكة أمان بالخلفية قبل الحذف.\n\n" +
+                        "لتأكيد الحذف النهائي، يرجى كتابة العبارة التالية بالضبط:\n" +
+                        "أوافق على الحذف النهائي"
+                    )
+                    OutlinedTextField(
+                        value = inputPhrase,
+                        onValueChange = { 
+                            inputPhrase = it
+                            inputError = false
+                        },
+                        modifier = Modifier.fillMaxWidth().testTag("delete_confirmation_phrase_input"),
+                        placeholder = { Text("أوافق على الحذف النهائي") },
+                        isError = inputError,
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = NegativeRed,
+                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            errorBorderColor = NegativeRed
+                        )
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.clearAllData()
-                        showClearConfirmDialog = false
+                        if (inputPhrase.trim() == "أوافق على الحذف النهائي") {
+                            viewModel.clearAllDataWithEmergencyBackup(
+                                onSuccess = {
+                                    showClearConfirmDialog = false
+                                    inputPhrase = ""
+                                },
+                                onFailure = { errMsg ->
+                                    Toast.makeText(context, errMsg, Toast.LENGTH_LONG).show()
+                                }
+                            )
+                        } else {
+                            inputError = true
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NegativeRed)
+                    colors = ButtonDefaults.buttonColors(containerColor = NegativeRed),
+                    enabled = inputPhrase.trim() == "أوافق على الحذف النهائي"
                 ) {
                     Text("نعم، امسح كل شيء")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearConfirmDialog = false }) {
+                TextButton(onClick = { 
+                    showClearConfirmDialog = false 
+                    inputPhrase = ""
+                    inputError = false
+                }) {
                     Text("رجوع")
                 }
             }
@@ -929,7 +1006,7 @@ fun SettingsScreen(
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("hesabat_habayeb_backup", backupString)
                         clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "تم نسخ شفرة البيانات للحافظة بنجاح", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Backup code copied to clipboard. Keep it safe!", Toast.LENGTH_SHORT).show()
                         showBackupDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)

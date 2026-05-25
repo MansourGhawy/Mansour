@@ -579,6 +579,125 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun clearAllDataWithEmergencyBackup(onSuccess: () -> Unit, onFailure: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val success = withContext(Dispatchers.IO) {
+                    val context = getApplication<Application>()
+                    // 1. Create emergency backup
+                    val dbFile = context.getDatabasePath("hesabat_habayeb_db")
+                    if (!dbFile.exists()) {
+                        // DB doesn't exist yet, nothing to back up, safe to continue
+                        return@withContext true
+                    }
+                    val freeSpace = context.filesDir.freeSpace
+                    val dbSize = dbFile.length()
+                    // Safety check: ensure at least dbSize + 1.5MB is available
+                    if (freeSpace < (dbSize + (1500 * 1024))) {
+                        return@withContext false
+                    }
+                    
+                    val timestamp = System.currentTimeMillis()
+                    val backupFile = java.io.File(context.filesDir, "emergency_backup_$timestamp.db")
+                    
+                    // Copy primary database-file
+                    dbFile.inputStream().use { input ->
+                        backupFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    
+                    // Copy active WAL / SHM databases sidecars if they exist
+                    val walFile = java.io.File(dbFile.absolutePath + "-wal")
+                    if (walFile.exists()) {
+                        val backupWal = java.io.File(context.filesDir, "emergency_backup_$timestamp.db-wal")
+                        walFile.inputStream().use { input ->
+                            backupWal.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                    val shmFile = java.io.File(dbFile.absolutePath + "-shm")
+                    if (shmFile.exists()) {
+                        val backupShm = java.io.File(context.filesDir, "emergency_backup_$timestamp.db-shm")
+                        shmFile.inputStream().use { input ->
+                            backupShm.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                    
+                    // 2. Perform deep database wipe/clear tables
+                    repository.clearAllData()
+                    
+                    // 3. Reset SharedPreferences
+                    val prefs = context.getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().clear().apply()
+                    
+                    true
+                }
+                
+                if (success) {
+                    // Reset internal memory representations to initial values
+                    _isFingerprintEnabled.value = false
+                    _securityPin.value = ""
+                    _isDarkTheme.value = false
+                    
+                    _statusMessage.emit("تم النسخ الاحتياطي الطارئ ومسح جميع البيانات والتهيئة بنجاح")
+                    triggerVibration()
+                    onSuccess()
+                } else {
+                    onFailure("فشل المسح: مساحة تخزين الهاتف منخفضة للغاية للنسخ الاحتياطي الاحتيازي الطارئ!")
+                }
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                onFailure("فشل مسح البيانات: ${t.localizedMessage}")
+            }
+        }
+    }
+
+    // Helper functions for GZIP compression & simple XOR key encryption
+    private fun compressAndEncrypt(data: String): String {
+        return try {
+            val bos = java.io.ByteArrayOutputStream()
+            val gzos = java.util.zip.GZIPOutputStream(bos)
+            gzos.write(data.toByteArray(Charsets.UTF_8))
+            gzos.close()
+            val compressed = bos.toByteArray()
+            
+            val key = "HABAYEB_KEY_2026"
+            val encrypted = ByteArray(compressed.size)
+            for (i in compressed.indices) {
+                encrypted[i] = (compressed[i].toInt() xor key[i % key.length].code).toByte()
+            }
+            
+            android.util.Base64.encodeToString(encrypted, android.util.Base64.NO_WRAP)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ""
+        }
+    }
+
+    private fun decryptAndDecompress(base64Str: String): String {
+        return try {
+            val decoded = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT)
+            val key = "HABAYEB_KEY_2026"
+            val compressed = ByteArray(decoded.size)
+            for (i in decoded.indices) {
+                compressed[i] = (decoded[i].toInt() xor key[i % key.length].code).toByte()
+            }
+            
+            val gzis = java.util.zip.GZIPInputStream(java.io.ByteArrayInputStream(compressed))
+            val reader = gzis.bufferedReader(Charsets.UTF_8)
+            val out = reader.readText()
+            gzis.close()
+            out
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ""
+        }
+    }
+
     // Helper formatting function for YR
     fun formatCurrency(amount: Double): String {
         val formatter = NumberFormat.getNumberInstance(Locale.US)
@@ -610,7 +729,7 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // Backup as base64 or plaintext JSON
+    // Backup as compressed and encrypted base64 string of the entire database
     suspend fun exportBackup(): String = withContext(Dispatchers.IO) {
         try {
             val list = customersWithBalances.value
@@ -643,7 +762,13 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
             root.put("data", custArray)
             
             triggerVibration()
-            root.toString(2)
+            val rawJson = root.toString()
+            val compressedCode = compressAndEncrypt(rawJson)
+            if (compressedCode.isNotEmpty()) {
+                compressedCode
+            } else {
+                rawJson
+            }
         } catch (t: Throwable) {
             t.printStackTrace()
             "فشل تصدير البيانات"
@@ -654,7 +779,15 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    val root = JSONObject(jsonString)
+                    var workingJson = jsonString.trim()
+                    if (!workingJson.startsWith("{")) {
+                        // Attempt fallback decryption and decompression for compressed Base64 code formats
+                        val decrypted = decryptAndDecompress(workingJson)
+                        if (decrypted.isNotEmpty()) {
+                            workingJson = decrypted
+                        }
+                    }
+                    val root = JSONObject(workingJson)
                     if (!root.has("app") || root.getString("app") != "hesabat_habayeb") {
                         _statusMessage.emit("ملف النسخة الاحتياطية غير صالح")
                         return@withContext
