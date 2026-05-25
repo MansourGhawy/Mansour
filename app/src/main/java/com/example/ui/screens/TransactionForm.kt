@@ -251,7 +251,7 @@ fun TransactionForm(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(if (txType == "DEBT") NegativeRed else Color.Transparent)
+                        .background(if (txType == "DEBT") PositiveGreen else Color.Transparent)
                         .clickable { txType = "DEBT" }
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -269,7 +269,7 @@ fun TransactionForm(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(if (txType == "PAYMENT") PositiveGreen else Color.Transparent)
+                        .background(if (txType == "PAYMENT") NegativeRed else Color.Transparent)
                         .clickable { txType = "PAYMENT" }
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -301,7 +301,7 @@ fun TransactionForm(
                     Text(
                         "YR",
                         fontWeight = FontWeight.Black,
-                        color = if (txType == "DEBT") NegativeRed else PositiveGreen,
+                        color = if (txType == "DEBT") PositiveGreen else NegativeRed,
                         modifier = Modifier.padding(start = 12.dp, end = 8.dp)
                     )
                 },
@@ -335,7 +335,7 @@ fun TransactionForm(
                 shape = RoundedCornerShape(18.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (txType == "DEBT") NegativeRed else PositiveGreen,
+                    focusedBorderColor = if (txType == "DEBT") PositiveGreen else NegativeRed,
                     unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1),
                     errorBorderColor = NegativeRed
                 )
@@ -412,9 +412,9 @@ fun TransactionForm(
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(NegativeRed.copy(alpha = 0.15f)).clickable { calcExpression = "" }, contentAlignment = Alignment.Center) { Text("مسح", fontWeight = FontWeight.Bold, color = NegativeRed, fontSize = 12.sp) }
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(PositiveGreen.copy(alpha = 0.15f)).clickable { calcExpression = "" }, contentAlignment = Alignment.Center) { Text("مسح", fontWeight = FontWeight.Bold, color = PositiveGreen, fontSize = 12.sp) }
                             Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "0" }, contentAlignment = Alignment.Center) { Text("0", fontWeight = FontWeight.Bold, color = textCol) }
-                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(PositiveGreen.copy(alpha = 0.15f)).clickable { 
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(NegativeRed.copy(alpha = 0.15f)).clickable { 
                                 val eval = evaluateExpression(calcExpression)
                                 if (eval != null) {
                                     calcExpression = eval.toLong().toString()
@@ -452,7 +452,7 @@ fun TransactionForm(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(if (txType == "DEBT") NegativeRed.copy(alpha = 0.11f) else PositiveGreen.copy(alpha = 0.11f))
+                        .background(if (txType == "DEBT") PositiveGreen.copy(alpha = 0.11f) else NegativeRed.copy(alpha = 0.11f))
                         .padding(12.dp)
                 ) {
                     Row(
@@ -461,7 +461,7 @@ fun TransactionForm(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = if (txType == "DEBT") NegativeRed else PositiveGreen,
+                            tint = if (txType == "DEBT") PositiveGreen else NegativeRed,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -469,7 +469,7 @@ fun TransactionForm(
                             text = "المبلغ المكتوب: $dynamicFormattedPrice",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (txType == "DEBT") NegativeRed else PositiveGreen
+                            color = if (txType == "DEBT") PositiveGreen else NegativeRed
                         )
                     }
                 }
@@ -566,7 +566,7 @@ fun TransactionForm(
                 shape = RoundedCornerShape(16.dp),
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (txType == "DEBT") NegativeRed else PositiveGreen,
+                    focusedBorderColor = if (txType == "DEBT") PositiveGreen else NegativeRed,
                     unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1)
                 )
             )
@@ -575,9 +575,9 @@ fun TransactionForm(
 
             // Save transaction button
             val finalSaveBtnColors = if (txType == "DEBT") {
-                listOf(NegativeRed, AccentPink)
-            } else {
                 listOf(PositiveGreen, SecondaryTurquoise)
+            } else {
+                listOf(NegativeRed, AccentPink)
             }
 
             GradientButton(

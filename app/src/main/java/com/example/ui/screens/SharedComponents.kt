@@ -22,8 +22,8 @@ val AccentPink = Color(0xFFFD79A8)
 val LightBg = Color(0xFFF8F9FE)
 val DarkBg = Color(0xFF141221)
 
-val PositiveGreen = Color(0xFF00B894)
-val NegativeRed = Color(0xFFFF7675)
+val PositiveGreen = Color(0xFF2ECC71)
+val NegativeRed = Color(0xFFE74C3C)
 
 @Composable
 fun GlassyCard(

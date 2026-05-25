@@ -40,11 +40,12 @@ import com.example.ui.viewmodel.CustomerViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerForm(
+    initialName: String = "",
     viewModel: CustomerViewModel,
     isDark: Boolean,
     onBackClick: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialName) }
     var phone by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     

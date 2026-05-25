@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.collectLatest
 sealed class AppScreen {
     object Splash : AppScreen()
     object Dashboard : AppScreen()
-    object AddCustomer : AppScreen()
+    data class AddCustomer(val initialName: String = "") : AppScreen()
     object CustomerDetail : AppScreen()
     data class AddTransaction(val defaultType: String) : AppScreen()
     data class EditTransaction(val transactionId: Int) : AppScreen()
@@ -72,6 +72,8 @@ fun AppNavigationContainer(
     isDark: Boolean
 ) {
     val context = LocalContext.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     // Observe shared status message toasts from viewModel
     LaunchedEffect(key1 = true) {
@@ -140,6 +142,9 @@ fun AppNavigationContainer(
                         NavigationBarItem(
                             selected = activeTab == HomeTab.DASHBOARD,
                             onClick = {
+                                viewModel.searchQuery.value = ""
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
                                 activeTab = HomeTab.DASHBOARD
                                 viewModel.triggerVibration()
                             },
@@ -157,6 +162,9 @@ fun AppNavigationContainer(
                         NavigationBarItem(
                             selected = activeTab == HomeTab.REPORTS,
                             onClick = {
+                                viewModel.searchQuery.value = ""
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
                                 activeTab = HomeTab.REPORTS
                                 viewModel.triggerVibration()
                             },
@@ -174,6 +182,9 @@ fun AppNavigationContainer(
                         NavigationBarItem(
                             selected = activeTab == HomeTab.SETTINGS,
                             onClick = {
+                                viewModel.searchQuery.value = ""
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
                                 activeTab = HomeTab.SETTINGS
                                 viewModel.triggerVibration()
                             },
@@ -195,7 +206,7 @@ fun AppNavigationContainer(
                     FloatingActionButton(
                         onClick = {
                             viewModel.triggerVibration()
-                            navigateTo(AppScreen.AddCustomer)
+                            navigateTo(AppScreen.AddCustomer())
                         },
                         containerColor = PrimaryPurple,
                         contentColor = Color.White,
@@ -236,7 +247,7 @@ fun AppNavigationContainer(
                                     MainScreen(
                                         viewModel = viewModel,
                                         isDark = isDark,
-                                        onAddCustomerClick = { navigateTo(AppScreen.AddCustomer) },
+                                        onAddCustomerClick = { name -> navigateTo(AppScreen.AddCustomer(name)) },
                                         onCustomerClick = { customerId ->
                                             viewModel.selectCustomer(customerId)
                                             navigateTo(AppScreen.CustomerDetail)
@@ -253,7 +264,9 @@ fun AppNavigationContainer(
                         }
 
                         is AppScreen.AddCustomer -> {
+                            val addScreen = currentScreen as AppScreen.AddCustomer
                             CustomerForm(
+                                initialName = addScreen.initialName,
                                 viewModel = viewModel,
                                 isDark = isDark,
                                 onBackClick = { navigateBack() }

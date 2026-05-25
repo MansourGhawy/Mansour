@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,11 +13,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -30,18 +33,59 @@ import com.example.ui.viewmodel.CustomerWithBalance
 import java.text.SimpleDateFormat
 import java.util.*
 
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     viewModel: CustomerViewModel,
     isDark: Boolean,
-    onAddCustomerClick: () -> Unit,
+    onAddCustomerClick: (String) -> Unit,
     onCustomerClick: (Int) -> Unit
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     var isSearching by remember { mutableStateOf(false) }
+    var isSearchFocused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val recentSearches by viewModel.recentSearches.collectAsState()
     val customersList by viewModel.customersWithBalances.collectAsState()
     val summary by viewModel.financialSummary.collectAsState()
+    val filterOption by viewModel.filterOption.collectAsState()
+
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
+    val selectedCustomers = remember { mutableStateListOf<CustomerWithBalance>() }
+    val isSelectionMode = selectedCustomers.isNotEmpty()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("حذف الزبائن المحددين", fontWeight = FontWeight.Bold) },
+            text = { Text("هل أنت متأكد من حذف ${selectedCustomers.size} من الزبائن والسجل المالي الخاص بهم بالكامل؟ لا يمكن التراجع عن هذا الإجراء.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteMultipleCustomers(selectedCustomers.map { it.customer }) {
+                        selectedCustomers.clear()
+                        showDeleteDialog = false
+                    }
+                }) {
+                    Text("حذف", color = NegativeRed, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("إلغاء")
+                }
+            }
+        )
+    }
 
     val totalTheyOweMe = summary.first
     val totalIMeOwe = summary.second
@@ -70,26 +114,52 @@ fun MainScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isSearching) {
+                if (isSelectionMode) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { selectedCustomers.clear() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close Selection", tint = Color.White)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${selectedCustomers.size} محدد",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                    }
+                } else if (isSearching) {
                     TextField(
                         value = searchQuery,
                         onValueChange = { viewModel.searchQuery.value = it },
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp)
-                            .testTag("search_input"),
+                            .testTag("search_input")
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { isSearchFocused = it.isFocused },
                         placeholder = { Text("ابحث عن اسم زبون...", color = Color.White.copy(alpha = 0.6f)) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "ابحث", tint = Color.White) },
                         trailingIcon = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.searchQuery.value = "" }) {
+                                    IconButton(onClick = { 
+                                        viewModel.searchQuery.value = "" 
+                                        focusRequester.requestFocus()
+                                    }) {
                                         Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color.White)
                                     }
                                 }
                                 IconButton(onClick = {
                                     isSearching = false
                                     viewModel.searchQuery.value = ""
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
                                 }) {
                                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                                 }
@@ -108,6 +178,10 @@ fun MainScreen(
                         ),
                         singleLine = true
                     )
+
+                    LaunchedEffect(Unit) {
+                        focusRequester.requestFocus()
+                    }
                 } else {
                     Row(
                         modifier = Modifier.weight(1f),
@@ -156,38 +230,117 @@ fun MainScreen(
                 }
             }
 
+            AnimatedVisibility(
+                visible = isSearching && searchQuery.isEmpty() && isSearchFocused && recentSearches.isNotEmpty(),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "عمليات البحث الأخيرة",
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { viewModel.clearRecentSearches() }
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "مسح الكل",
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        recentSearches.forEach { search ->
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.White.copy(alpha = 0.2f),
+                                modifier = Modifier.clickable {
+                                    viewModel.searchQuery.value = search
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = search,
+                                        color = Color.White,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             // Main Balance Card inside Header with sleek background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Color.White.copy(alpha = 0.18f))
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(24.dp))
-                    .padding(20.dp),
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = "إجمالي الرصيد الصافي",
                         fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.75f),
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontWeight = FontWeight.Medium
                     )
-                    Text(
-                        text = viewModel.formatCurrency(totalNet),
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "ريال يمني",
-                        fontSize = 9.sp,
-                        color = Color.White.copy(alpha = 0.60f),
-                        letterSpacing = 1.sp
-                    )
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = viewModel.formatCurrency(totalNet),
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "ريال",
+                            fontSize = 10.sp,
+                            color = Color.White.copy(alpha = 0.70f),
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                    }
                 }
             }
         }
@@ -200,15 +353,28 @@ fun MainScreen(
                 .padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val isGreenActive = filterOption == com.example.ui.viewmodel.FilterOption.RECEIVABLES
+            val greenScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isGreenActive) 1.05f else 1.0f)
+
             // Stats Card 1: لي عند الناس (Debts due to me)
             Card(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(18.dp)),
+                    .scale(greenScale)
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable {
+                        keyboardController?.hide()
+                        if (isGreenActive) {
+                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
+                        } else {
+                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.RECEIVABLES
+                        }
+                    },
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                border = BorderStroke(1.dp, if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))
+                border = BorderStroke(if (isGreenActive) 2.dp else 1.dp, if (isGreenActive) PositiveGreen else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive) 8.dp else 0.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -248,15 +414,28 @@ fun MainScreen(
                 }
             }
 
+            val isRedActive = filterOption == com.example.ui.viewmodel.FilterOption.PAYABLES
+            val redScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isRedActive) 1.05f else 1.0f)
+
             // Stats Card 2: علي للناس (Debts I owe to others)
             Card(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(18.dp)),
+                    .scale(redScale)
+                    .clip(RoundedCornerShape(18.dp))
+                    .clickable {
+                        keyboardController?.hide()
+                        if (isRedActive) {
+                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
+                        } else {
+                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.PAYABLES
+                        }
+                    },
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                border = BorderStroke(1.dp, if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))
+                border = BorderStroke(if (isRedActive) 2.dp else 1.dp, if (isRedActive) NegativeRed else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
+                elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive) 8.dp else 0.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(12.dp),
@@ -348,26 +527,63 @@ fun MainScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(32.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FolderOpen,
-                        contentDescription = "Empty",
-                        tint = if (isDark) Color(0xFF323048) else Color(0xFFE2E2FF),
-                        modifier = Modifier.size(90.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = if (searchQuery.isNotEmpty()) "لم نعثر على أي زبون بهذا الاسم" else "لا يوجد زبائن حالياً",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (searchQuery.isNotEmpty()) "تأكد من كتابة الاسم بطريقة صحيحة" else "اضغط على زر (+) في الأسفل لإضافة زبونك الأول",
-                        fontSize = 12.sp,
-                        color = if (isDark) Color(0xFF747D8C) else Color(0xFF747D8C),
-                        textAlign = TextAlign.Center
-                    )
+                    if (searchQuery.isNotEmpty()) {
+                        Icon(
+                            imageVector = Icons.Default.SearchOff,
+                            contentDescription = "No Results",
+                            tint = if (isDark) Color(0xFF323048) else Color(0xFFE2E2FF),
+                            modifier = Modifier.size(90.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "لم نعثر على زبون بالاسم:",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "'$searchQuery'",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Black,
+                            color = PrimaryPurple
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { 
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                onAddCustomerClick(searchQuery) 
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "إضافة كزبون جديد", fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.FolderOpen,
+                            contentDescription = "Empty",
+                            tint = if (isDark) Color(0xFF323048) else Color(0xFFE2E2FF),
+                            modifier = Modifier.size(90.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "لا يوجد زبائن حالياً",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "اضغط على زر (+) في الأسفل لإضافة زبونك الأول",
+                            fontSize = 12.sp,
+                            color = if (isDark) Color(0xFF747D8C) else Color(0xFF747D8C),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         } else {
@@ -381,9 +597,30 @@ fun MainScreen(
                 items(customersList, key = { it.customer.id }) { item ->
                     CustomerRow(
                         item = item,
+                        searchQuery = searchQuery,
                         viewModel = viewModel,
                         isDark = isDark,
-                        onClick = { onCustomerClick(item.customer.id) }
+                        isSelected = selectedCustomers.contains(item),
+                        isSelectionMode = isSelectionMode,
+                        onLongClick = {
+                            if (!isSelectionMode) {
+                                selectedCustomers.add(item)
+                            }
+                        },
+                        onClick = {
+                            if (isSelectionMode) {
+                                if (selectedCustomers.contains(item)) {
+                                    selectedCustomers.remove(item)
+                                } else {
+                                    selectedCustomers.add(item)
+                                }
+                            } else {
+                                if (searchQuery.isNotEmpty()) {
+                                    viewModel.addRecentSearch(item.customer.name)
+                                }
+                                onCustomerClick(item.customer.id)
+                            }
+                        }
                     )
                 }
             }
@@ -391,41 +628,49 @@ fun MainScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun CustomerRow(
     item: CustomerWithBalance,
+    searchQuery: String = "",
     viewModel: CustomerViewModel,
     isDark: Boolean,
+    isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
+    onLongClick: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val charLogo = item.customer.name.trim().take(1).uppercase()
     val balanceText = viewModel.formatCurrency(kotlin.math.abs(item.netBalance))
 
     // Determine colors based on balance state
-    // "أخضر إذا له عندي (balance < 0)، أحمر إذا عليه دين (balance > 0)، رمادي إذا تساوى"
+    // "أخضر إذا عليه دين (balance > 0)، أحمر إذا له عندي (balance < 0)، رمادي إذا تساوى"
     val indicatorColor = when {
-        item.netBalance < 0 -> PositiveGreen
-        item.netBalance > 0 -> NegativeRed
+        item.netBalance > 0 -> PositiveGreen // Receivable (لي عند الناس)
+        item.netBalance < 0 -> NegativeRed   // Payable (علي للناس)
         else -> Color.Gray
     }
 
     val stateText = when {
-        item.netBalance < 0 -> "له عندي (دائن)"
-        item.netBalance > 0 -> "عليه دين (مدين)"
+        item.netBalance > 0 -> "عليه دين"
+        item.netBalance < 0 -> "له عندي"
         else -> "متساوي"
     }
 
-    val bgCardColor = if (isDark) Color(0xFF1E1D2F) else Color.White
-    val borderColor = if (isDark) Color(0x1F6C5CE7) else Color(0x0F6C5CE7)
+    val bgCardColor = if (isSelected) PrimaryPurple.copy(alpha = 0.15f) else (if (isDark) Color(0xFF1E1D2F) else Color.White)
+    val borderColor = if (isSelected) PrimaryPurple else (if (isDark) Color(0x1F6C5CE7) else Color(0x0F6C5CE7))
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .testTag("customer_item_${item.customer.id}"),
         colors = CardDefaults.cardColors(containerColor = bgCardColor),
-        border = BorderStroke(1.dp, borderColor)
+        border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor)
     ) {
         Row(
             modifier = Modifier
@@ -457,14 +702,41 @@ fun CustomerRow(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = item.customer.name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDark) Color.White else Color(0xFF2D3436),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                var searchHighlighted = false
+                if (searchQuery.isNotEmpty()) {
+                    val normName = com.example.utils.normalizeArabic(item.customer.name)
+                    val normQuery = com.example.utils.normalizeArabic(searchQuery)
+                    val startIndex = normName.indexOf(normQuery)
+                    if (startIndex >= 0 && startIndex + normQuery.length <= item.customer.name.length) {
+                        searchHighlighted = true
+                        val endIndex = startIndex + normQuery.length
+                        Text(
+                            text = androidx.compose.ui.text.buildAnnotatedString {
+                                append(item.customer.name.substring(0, startIndex))
+                                withStyle(style = androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Black, background = PrimaryPurple.copy(alpha=0.3f))) {
+                                    append(item.customer.name.substring(startIndex, endIndex))
+                                }
+                                append(item.customer.name.substring(endIndex))
+                            },
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDark) Color.White else Color(0xFF2D3436),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                
+                if (!searchHighlighted) {
+                    Text(
+                        text = item.customer.name,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color.White else Color(0xFF2D3436),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 

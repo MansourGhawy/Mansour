@@ -37,6 +37,10 @@ enum class SortOption {
     LAST_TRANSACTION
 }
 
+enum class FilterOption {
+    ALL, RECEIVABLES, PAYABLES
+}
+
 class CustomerViewModel(application: Application) : AndroidViewModel(application) {
     private var repository: CustomerRepository = CustomerRepository(
         AppDatabase.getDatabase(application).customerDao()
@@ -61,6 +65,7 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
     // Query and sort
     val searchQuery = MutableStateFlow("")
     val sortOption = MutableStateFlow(SortOption.NAME)
+    val filterOption = MutableStateFlow(FilterOption.ALL)
 
     // Current selected customer for details
     private val _selectedCustomerId = MutableStateFlow<Int?>(null)
@@ -69,6 +74,9 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
     // Google Drive integration states
     private val _isGoogleSignedIn = MutableStateFlow(false)
     val isGoogleSignedIn: StateFlow<Boolean> = _isGoogleSignedIn.asStateFlow()
+
+    private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
+    val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
 
     private val _googleEmail = MutableStateFlow<String?>(null)
     val googleEmail: StateFlow<String?> = _googleEmail.asStateFlow()
@@ -91,6 +99,10 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
             _isDarkTheme.value = prefs.getBoolean("dark_theme", false)
             _isFingerprintEnabled.value = prefs.getBoolean("fingerprint_enabled", false)
             _securityPin.value = prefs.getString("security_pin", "1234") ?: "1234"
+            val historyStr = prefs.getString("recent_searches", "") ?: ""
+            if (historyStr.isNotEmpty()) {
+                _recentSearches.value = historyStr.split("|||")
+            }
         } catch (t: Throwable) {
             t.printStackTrace()
         }
@@ -224,14 +236,12 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
         .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Combined StateFlow for customers with their calculated balances, search filters, and sorting
-    val customersWithBalances: StateFlow<List<CustomerWithBalance>> = combine(
+    // Combined StateFlow for all customers with their calculated balances (unfiltered)
+    private val allCustomersWithBalances: Flow<List<CustomerWithBalance>> = combine(
         repository.allCustomers,
-        repository.allTransactions,
-        searchQuery,
-        sortOption
-    ) { customers, transactions, query, sort ->
-        val mappedList = customers.map { customer ->
+        repository.allTransactions
+    ) { customers, transactions ->
+        customers.map { customer ->
             val customerTrans = transactions.filter { it.customerId == customer.id }
             val totalDebt = customerTrans.filter { it.type == "DEBT" }.sumOf { it.amount }
             val totalPayment = customerTrans.filter { it.type == "PAYMENT" }.sumOf { it.amount }
@@ -247,27 +257,69 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
                 lastTransactionNotes = lastTrans?.notes
             )
         }
+    }.flowOn(Dispatchers.Default)
+
+    private val normalizedNamesCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    // Apply search query and sorting on the unfiltered list
+    val customersWithBalances: StateFlow<List<CustomerWithBalance>> = combine(
+        allCustomersWithBalances,
+        searchQuery,
+        sortOption,
+        filterOption
+    ) { mappedList, query, sort, filter ->
+        val fuzzyScores = mutableMapOf<Int, Int>()
+
+        // Apply filter option
+        val matchedList = when (filter) {
+            FilterOption.RECEIVABLES -> mappedList.filter { it.netBalance > 0 }
+            FilterOption.PAYABLES -> mappedList.filter { it.netBalance < 0 }
+            FilterOption.ALL -> mappedList
+        }
 
         // Apply search query
         val filtered = if (query.isBlank()) {
-            mappedList
+            matchedList
         } else {
-            mappedList.filter { it.customer.name.contains(query, ignoreCase = true) }
+            val normQuery = com.example.utils.normalizeArabic(query)
+            matchedList.filter { item ->
+                val normName = normalizedNamesCache.getOrPut(item.customer.name) {
+                    com.example.utils.normalizeArabic(item.customer.name)
+                }
+                val score = when {
+                    normName == normQuery -> 0
+                    normName.startsWith(normQuery) -> 1
+                    normName.contains(normQuery) -> 2
+                    com.example.utils.levenshteinDistance(normQuery, normName) <= 1 -> 3
+                    normName.split(" ").any { com.example.utils.levenshteinDistance(normQuery, it) <= 1 } -> 4
+                    else -> -1
+                }
+                if (score >= 0) {
+                    fuzzyScores[item.customer.id] = score
+                    true
+                } else false
+            }
         }
 
         // Apply sorting
-        when (sort) {
+        val sortedList = when (sort) {
             SortOption.NAME -> filtered.sortedBy { it.customer.name }
             SortOption.BALANCE_DESC -> filtered.sortedByDescending { it.netBalance }
             SortOption.BALANCE_ASC -> filtered.sortedBy { it.netBalance }
             SortOption.LAST_TRANSACTION -> filtered.sortedByDescending { it.lastTransactionTime ?: 0L }
         }
+        
+        if (query.isNotBlank()) {
+            sortedList.sortedBy { fuzzyScores[it.customer.id] ?: 100 }
+        } else {
+            sortedList
+        }
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Financial Cards summary
-    val financialSummary = customersWithBalances.map { list ->
+    // Financial Cards summary - calculate strictly from all unfiltered customers
+    val financialSummary = allCustomersWithBalances.map { list ->
         val totalIMeOwe = list.filter { it.netBalance < 0 }.sumOf { kotlin.math.abs(it.netBalance) }
         val totalTheyOweMe = list.filter { it.netBalance > 0 }.sumOf { it.netBalance }
         val net = totalTheyOweMe - totalIMeOwe
@@ -343,6 +395,43 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Core Mutators
+    fun addRecentSearch(name: String) {
+        val currentStr = getApplication<Application>().getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE)
+            .getString("recent_searches", "") ?: ""
+        var currentList = if (currentStr.isNotEmpty()) currentStr.split("|||").toMutableList() else mutableListOf()
+        
+        currentList.remove(name)
+        currentList.add(0, name) // move to top
+
+        if (currentList.size > 10) {
+            currentList = currentList.take(10).toMutableList()
+        }
+
+        _recentSearches.value = currentList
+        saveRecentSearches(currentList)
+    }
+
+    fun removeRecentSearch(name: String) {
+        val currentList = _recentSearches.value.toMutableList()
+        currentList.remove(name)
+        _recentSearches.value = currentList
+        saveRecentSearches(currentList)
+    }
+
+    fun clearRecentSearches() {
+        _recentSearches.value = emptyList()
+        saveRecentSearches(emptyList())
+    }
+
+    private fun saveRecentSearches(list: List<String>) {
+        try {
+            val prefs = getApplication<Application>().getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("recent_searches", list.joinToString("|||")).apply()
+        } catch (t: Throwable) {
+            t.printStackTrace()
+        }
+    }
+
     fun addCustomer(name: String, phone: String, notes: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             try {
@@ -384,12 +473,35 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
                 withContext(Dispatchers.IO) {
                     repository.deleteCustomer(customer)
                 }
+                removeRecentSearch(customer.name)
                 _statusMessage.emit("تم حذف الزبون وسجله بالكامل")
                 triggerVibration()
                 onSuccess()
             } catch (t: Throwable) {
                 t.printStackTrace()
                 _statusMessage.emit("فشل حذف الزبون: ${t.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteMultipleCustomers(customers: List<Customer>, onSuccess: () -> Unit) {
+        if (customers.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    customers.forEach { customer ->
+                        repository.deleteCustomer(customer)
+                    }
+                }
+                customers.forEach { customer ->
+                    removeRecentSearch(customer.name)
+                }
+                _statusMessage.emit("تم حذف ${customers.size} من الزبائن بنجاح")
+                triggerVibration()
+                onSuccess()
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                _statusMessage.emit("فشل الحذف: ${t.localizedMessage}")
             }
         }
     }

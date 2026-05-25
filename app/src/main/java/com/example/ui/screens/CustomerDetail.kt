@@ -68,14 +68,14 @@ fun CustomerDetail(
     val balanceAbsText = viewModel.formatCurrency(kotlin.math.abs(balance))
 
     val themeColor = when {
-        balance < 0 -> PositiveGreen
-        balance > 0 -> NegativeRed
+        balance > 0 -> PositiveGreen
+        balance < 0 -> NegativeRed
         else -> Color.Gray
     }
 
     val themeLabel = when {
-        balance < 0 -> "له رصيد عندي"
         balance > 0 -> "متبقي عليه دين"
+        balance < 0 -> "له رصيد عندي"
         else -> "الحساب متساوي"
     }
 
@@ -513,11 +513,11 @@ fun TransactionRow(
 
     val isDebt = transaction.type == "DEBT"
     val cardColor = if (isDebt) {
-        if (isDark) Color(0x0CFF7675) else Color(0x06FF7675)
+        if (isDark) PositiveGreen.copy(alpha=0.06f) else PositiveGreen.copy(alpha=0.04f)
     } else {
-        if (isDark) Color(0x0C00B894) else Color(0x0600B894)
+        if (isDark) NegativeRed.copy(alpha=0.06f) else NegativeRed.copy(alpha=0.04f)
     }
-    val mainColor = if (isDebt) NegativeRed else PositiveGreen
+    val mainColor = if (isDebt) PositiveGreen else NegativeRed
     val amountText = (if (isDebt) "+" else "-") + viewModel.formatCurrency(transaction.amount)
 
     Card(
