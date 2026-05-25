@@ -72,15 +72,16 @@ fun SplashScreen(
                     .size(130.dp)
                     .scale(scale)
                     .background(
-                        color = Color.Transparent,
+                        color = if (isDark) Color(0x336C5CE7) else Color(0x1F6C5CE7),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                androidx.compose.foundation.Image(
-                    painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.app_icon_wallet_1779653277606),
-                    contentDescription = "App Logo",
-                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                Icon(
+                    imageVector = Icons.Default.Wallet,
+                    contentDescription = "Wallet Logo",
+                    tint = PrimaryPurple,
+                    modifier = Modifier.size(70.dp)
                 )
             }
             
