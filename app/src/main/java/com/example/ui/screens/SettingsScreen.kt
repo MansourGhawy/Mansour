@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.BorderStroke
 import com.example.data.repository.GoogleDriveBackupHelper
 import com.google.android.gms.common.api.ApiException
 import androidx.compose.foundation.layout.*
@@ -34,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.viewmodel.CustomerViewModel
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: CustomerViewModel,
@@ -101,97 +103,137 @@ fun SettingsScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Group 1: UI Theme Settings
-            Text(
-                text = "الواجهة واللمسات الفنية",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-            )
-
+            // CARD A: Visuals & Appearance (الواجهة واللمسات الفنية)
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("card_visuals_settings"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(PrimaryPurple.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                .background(
+                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFF0EDFF),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                imageVector = Icons.Default.Palette,
                                 contentDescription = null,
                                 tint = PrimaryPurple,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+                        Text(
+                            text = "الواجهة واللمسات الفنية",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isDark) Color.White else Color(0xFF2D3436)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Dark Mode Toggle Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "المظهر الداكن",
+                                text = "المظهر الداكن",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = if (isDark) Color.White else Color(0xFF2D3436)
                             )
                             Text(
-                                "تغيير سمات التطبيق بين الوضعين الليلى والنهاري",
+                                text = "تغيير سمات التطبيق بين الوضعين الليلى والنهاري",
                                 fontSize = 11.sp,
                                 color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                             )
                         }
+                        Switch(
+                            checked = isDark,
+                            onCheckedChange = { viewModel.toggleDarkTheme() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = PrimaryPurple,
+                                checkedTrackColor = PrimaryPurple.copy(alpha = 0.4f)
+                            ),
+                            modifier = Modifier.testTag("dark_mode_switch")
+                        )
                     }
-                    Switch(
-                        checked = isDark,
-                        onCheckedChange = { viewModel.toggleDarkTheme() },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = PrimaryPurple,
-                            checkedTrackColor = PrimaryPurple.copy(alpha = 0.4f)
-                        ),
-                        modifier = Modifier.testTag("dark_mode_switch")
-                    )
                 }
             }
 
-            // Group 1.5: Business Profile Settings
-            Text(
-                text = "بيانات المتجر والنشاط التجاري",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-            )
-
+            // CARD B: Business Profile (بيانات المتجر والنشاط التجاري)
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("card_business_settings"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // Header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFE6F0FA),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Store,
+                                contentDescription = null,
+                                tint = PrimaryPurple,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "بيانات المتجر والنشاط التجاري",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isDark) Color.White else Color(0xFF2D3436)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     val prefs = remember { context.getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE) }
                     var bName by remember { mutableStateOf(prefs.getString("business_name", "حسابات حبايب") ?: "حسابات حبايب") }
                     var bPhone by remember { mutableStateOf(prefs.getString("business_phone", "777777777") ?: "777777777") }
                     var bAddress by remember { mutableStateOf(prefs.getString("business_address", "اليمن") ?: "اليمن") }
                     var bNotes by remember { mutableStateOf(prefs.getString("business_notes", "نسعد لخدمتكم دائماً") ?: "نسعد لخدمتكم دائماً") }
+
+                    val inputBg = if (isDark) Color(0xFF222135) else Color(0xFFF5F4FC)
+                    val inputBorder = if (isDark) Color(0xFF323048) else Color(0xFFE5E7EB)
 
                     OutlinedTextField(
                         value = bName,
@@ -202,9 +244,12 @@ fun SettingsScreen(
                         label = { Text("اسم المحل / النشاط التجاري") },
                         modifier = Modifier.fillMaxWidth().testTag("business_name_input"),
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = inputBg,
+                            unfocusedContainerColor = inputBg,
                             focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            unfocusedBorderColor = inputBorder,
                             focusedLabelColor = PrimaryPurple,
                             focusedTextColor = if (isDark) Color.White else Color.Black,
                             unfocusedTextColor = if (isDark) Color.White else Color.Black
@@ -221,9 +266,12 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().testTag("business_phone_input"),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = inputBg,
+                            unfocusedContainerColor = inputBg,
                             focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            unfocusedBorderColor = inputBorder,
                             focusedLabelColor = PrimaryPurple,
                             focusedTextColor = if (isDark) Color.White else Color.Black,
                             unfocusedTextColor = if (isDark) Color.White else Color.Black
@@ -239,9 +287,12 @@ fun SettingsScreen(
                         label = { Text("عنوان النشاط") },
                         modifier = Modifier.fillMaxWidth().testTag("business_address_input"),
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = inputBg,
+                            unfocusedContainerColor = inputBg,
                             focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            unfocusedBorderColor = inputBorder,
                             focusedLabelColor = PrimaryPurple,
                             focusedTextColor = if (isDark) Color.White else Color.Black,
                             unfocusedTextColor = if (isDark) Color.White else Color.Black
@@ -257,9 +308,12 @@ fun SettingsScreen(
                         label = { Text("ملاحظات تذييل الفاتورة والكشف") },
                         modifier = Modifier.fillMaxWidth().testTag("business_notes_input"),
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = inputBg,
+                            unfocusedContainerColor = inputBg,
                             focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFE5E5E5),
+                            unfocusedBorderColor = inputBorder,
                             focusedLabelColor = PrimaryPurple,
                             focusedTextColor = if (isDark) Color.White else Color.Black,
                             unfocusedTextColor = if (isDark) Color.White else Color.Black
@@ -268,23 +322,49 @@ fun SettingsScreen(
                 }
             }
 
-            // Group 2: Backup and restore options
-            Text(
-                text = "النسخ الاحتياطي وحماية البيانات",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-            )
-
+            // CARD C: Data & Backups (النسخ الاحتياطي وحماية البيانات)
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("card_backup_settings"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column {
-                    // Export block
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Header
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFE6FFFA),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Cloud,
+                                contentDescription = null,
+                                tint = PrimaryPurple,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "النسخ الاحتياطي ومزامنة البيانات",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isDark) Color.White else Color(0xFF2D3436)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Export Option
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -294,13 +374,16 @@ fun SettingsScreen(
                                     showBackupDialog = true
                                 }
                             }
-                            .padding(16.dp),
+                            .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(SecondaryTurquoise.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                .background(
+                                    color = SecondaryTurquoise.copy(alpha = 0.12f),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -313,13 +396,13 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "نسخة احتياطية للبيانات",
+                                text = "تصدير نسخة احتياطية محلية",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = if (isDark) Color.White else Color(0xFF2D3436)
                             )
                             Text(
-                                "تصدير كافة الزبائن والعمليات كرموز مشفرة لمشاركتها وحفظها",
+                                text = "تصدير كافة الزبائن والعمليات كرموز مشفرة لمشاركتها وحفظها",
                                 fontSize = 11.sp,
                                 color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                             )
@@ -327,16 +410,14 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Default.ChevronLeft,
                             contentDescription = null,
-                            tint = Color.Gray
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
-                    Divider(
-                        color = if (isDark) Color(0x1BFFFFFF) else Color(0x0D000000),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
+                    HorizontalDivider(color = if (isDark) Color(0x1BFFFFFF) else Color(0x0D000000))
 
-                    // Import block
+                    // Import Option
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -344,13 +425,16 @@ fun SettingsScreen(
                                 restoreInputString = ""
                                 showRestoreDialog = true
                             }
-                            .padding(16.dp),
+                            .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(PrimaryPurple.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                .background(
+                                    color = PrimaryPurple.copy(alpha = 0.12f),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -363,13 +447,13 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "استيراد نسخة احتياطية",
+                                text = "استيراد نسخة احتياطية محلية",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = if (isDark) Color.White else Color(0xFF2D3436)
                             )
                             Text(
-                                "استيراد ملف أو ترميز نسخة احتياطية سابقة تم نسخها",
+                                text = "استيراد ملف أو ترميز نسخة احتياطية سابقة تم نسخها",
                                 fontSize = 11.sp,
                                 color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                             )
@@ -377,28 +461,24 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Default.ChevronLeft,
                             contentDescription = null,
-                            tint = Color.Gray
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-                }
-            }
 
-            // Group 3: Cloud Google Drive Backup options
-            Text(
-                text = "النسخ الاحتياطي السحابي (Google Drive)",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-            )
+                    HorizontalDivider(color = if (isDark) Color(0x1BFFFFFF) else Color(0x0D000000))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "النسخ الاحتياطي السحابي المستمر",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = PrimaryPurple,
+                        modifier = Modifier.padding(bottom = 10.dp)
+                    )
+
+                    // Cloud flow integration
                     if (!isGoogleSignedIn) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -407,15 +487,18 @@ fun SettingsScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
-                                    .background(PrimaryPurple.copy(alpha = 0.15f), CircleShape),
+                                    .size(44.dp)
+                                    .background(
+                                        color = PrimaryPurple.copy(alpha = 0.12f),
+                                        shape = CircleShape
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Cloud,
                                     contentDescription = null,
                                     tint = PrimaryPurple,
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                             Text(
@@ -472,7 +555,10 @@ fun SettingsScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
-                                        .background(SecondaryTurquoise.copy(alpha = 0.15f), CircleShape),
+                                        .background(
+                                            color = SecondaryTurquoise.copy(alpha = 0.12f),
+                                            shape = CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -567,13 +653,13 @@ fun SettingsScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        "النسخ الاحتياطي التلقائي اليومي",
+                                        text = "النسخ الاحتياطي التلقائي اليومي",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
                                         color = if (isDark) Color.White else Color(0xFF2D3436)
                                     )
                                     Text(
-                                        "مزامنة إلكترونية سحابية تلقائياً كل 24 ساعة بمجرد فتح التطبيق",
+                                        text = "مزامنة إلكترونية سحابية تلقائياً كل 24 ساعة بمجرد فتح التطبيق",
                                         fontSize = 11.sp,
                                         color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                                     )
@@ -627,60 +713,66 @@ fun SettingsScreen(
                 }
             }
 
-            // Group 4: Device Security Lock simulation
-            Text(
-                text = "الأمان وقفل الحساب",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-            )
-
+            // CARD D: Security & Safe Danger Zone (الأمان والمنطقة الحساسة)
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("card_security_settings"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                 ),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Header
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFFFF0F6),
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = PrimaryPurple,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "الحماية وإدارة الحساب",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = if (isDark) Color.White else Color(0xFF2D3436)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Bio switch row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(AccentPink.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Fingerprint,
-                                    contentDescription = null,
-                                    tint = AccentPink,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    "قفل بصمة الإصبع والرمز الشخصي",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = if (isDark) Color.White else Color(0xFF2D3436)
-                                )
-                                Text(
-                                    "قفل ومنع المتطفلين من تصفح سجلات الديون والزبائن",
-                                    fontSize = 11.sp,
-                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "قفل بصمة الإصبع والرمز الشخصي",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = if (isDark) Color.White else Color(0xFF2D3436)
+                            )
+                            Text(
+                                text = "قفل ومنع المتطفلين من تصفح سجلات الديون والزبائن",
+                                fontSize = 11.sp,
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
+                            )
                         }
                         Switch(
                             checked = isFingerprintEnabled,
@@ -702,16 +794,17 @@ fun SettingsScreen(
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = AccentPink,
                                 checkedTrackColor = AccentPink.copy(alpha = 0.4f)
-                             ),
+                            ),
                             modifier = Modifier.testTag("fingerprint_switch")
                         )
                     }
 
                     HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        modifier = Modifier.padding(vertical = 12.dp),
                         color = if (isDark) Color(0xFF2D2C45) else Color(0xFFF1F2F6)
                     )
 
+                    // PIN Modify Row
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -720,7 +813,7 @@ fun SettingsScreen(
                                 tempPinError = false
                                 showPinDialog = true
                             }
-                            .padding(16.dp),
+                            .padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -731,26 +824,29 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .background(PrimaryPurple.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                    .background(
+                                        color = PrimaryPurple.copy(alpha = 0.12f),
+                                        shape = CircleShape
+                                    ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = null,
                                     tint = PrimaryPurple,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    "رمز الأمان الشخصي (PIN)",
+                                    text = "رمز الأمان الشخصي (PIN)",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
                                     color = if (isDark) Color.White else Color(0xFF2D3436)
                                 )
                                 Text(
-                                    "تعديل الرمز السري الحالي لفتح التطبيق: $securityPinCode",
+                                    text = "تعديل الرمز السري الحالي لفتح التطبيق: $securityPinCode",
                                     fontSize = 11.sp,
                                     color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                                 )
@@ -762,108 +858,127 @@ fun SettingsScreen(
                             tint = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
                         )
                     }
-                }
-            }
 
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        color = if (isDark) Color(0xFF2D2C45) else Color(0xFFF1F2F6)
+                    )
 
-            // Group 4: Reset data section
-            Text(
-                text = "الخطر والمحو الذاتي",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = NegativeRed
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) Color(0x3DFF7675) else Color(0x1FFF7675)
-                ),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showClearConfirmDialog = true }
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(NegativeRed.copy(alpha = 0.25f), CircleShape),
-                        contentAlignment = Alignment.Center
+                    // Redesigned Delete Feature (حذف جميع البيانات بالكامل) with safety long press
+                    Card(
+                        modifier = Modifier.fillMaxWidth().testTag("unsafe_delete_card"),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isDark) Color(0xFF2C191D) else Color(0xFFFFF1F0)
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (isDark) Color(0xFF5A252D) else Color(0xFFFCA5A5)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteForever,
-                            contentDescription = null,
-                            tint = NegativeRed,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "حذف جميع البيانات بالكامل",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 14.sp,
-                            color = NegativeRed
-                        )
-                        Text(
-                            "احذر! سيتم مسح كافة الزبائن وسجل العمليات تماماً للبدء من جديد",
-                            fontSize = 11.sp,
-                            color = if (isDark) Color(0xFFD3A4AC) else Color(0xFF8A5D64)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = {
+                                        Toast.makeText(context, "تنبيه: اضغط باستمرار (لمدة ثانيتين على الأقل) لبدء إجرءات مسح البيانات كخطوة أمان.", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onLongClick = {
+                                        showClearConfirmDialog = true
+                                    }
+                                )
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(
+                                        color = Color(0xFFEF4444).copy(alpha = 0.15f),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteForever,
+                                    contentDescription = null,
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "حذف جميع بيانات التطبيق والزبائن",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFEF4444)
+                                )
+                                Text(
+                                    text = "اضغط مطولاً هنا لتأكيد تصفير الحساب الآمن",
+                                    fontSize = 11.sp,
+                                    color = if (isDark) Color(0xFFE5B4B9) else Color(0xFF991B1B)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFEF4444).copy(alpha = 0.1f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "منطقة خطرة",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFEF4444)
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // Version metadata info card
-            Text(
-                text = "عن تطبيق حسابات حبايب",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)
-            )
-
+            // RE-DESIGNED "ABOUT APP" & SUPPORT WIDGET BOARD
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 32.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) Color(0xFF161524) else Color(0xFFEEF0FA)
+                    containerColor = if (isDark) Color(0xFF222135) else Color(0xFFF8F7FF)
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = "تطبيق حسابات حبايب",
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
                         color = PrimaryPurple,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "تصميم وتطوير م/منصور قطينه للبرمجيات",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color.White else Color(0xFF2D3436),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "تصميم وتطوير م/منصور قطينه للبرمجيات",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) Color(0xFFC3BCF8) else Color(0xFF3A2C85),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    
+                    // Harmonized WhatsApp Pill Button
                     Row(
                         modifier = Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(24.dp))
                             .clickable {
                                 try {
                                     val intent = android.content.Intent(
@@ -875,33 +990,48 @@ fun SettingsScreen(
                                     Toast.makeText(context, "فشل فتح تطبيق WhatsApp", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                            .background(Color(0xFF2ECC71).copy(alpha = 0.15f))
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFF6C5CE7),
+                                        Color(0xFF5A49D8)
+                                    )
+                                )
+                            )
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Chat,
                             contentDescription = "WhatsApp Link",
-                            tint = Color(0xFF2ECC71),
+                            tint = Color.White,
                             modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "الدعم الفني المباشر",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "WhatsApp: 00967774004399",
+                            text = "00967774004399",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2ECC71),
-                            textAlign = TextAlign.Center
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
+                    
+                    Spacer(modifier = Modifier.height(14.dp))
                     Text(
                         text = "الإصدار: v1.0.0 (بدون إنترنت آمن)\nأندرويد متوافق مع نظام كيتكات ومستويات API 24+",
                         fontSize = 10.sp,
-                        color = Color.Gray,
+                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF7F8C8D),
                         textAlign = TextAlign.Center,
-                        lineHeight = 14.sp,
+                        lineHeight = 16.sp,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
