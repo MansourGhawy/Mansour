@@ -1,51 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    
-    <!-- Background Card Sliding Out -->
-    <path
-        android:pathData="M36,32 C36,29.24 38.24,27 41,27 L67,27 C69.76,27 72,29.24 72,32 L72,39 L36,39 Z"
-        android:fillColor="#00E5FF" />
-    <path
-        android:pathData="M42,31 L60,31 L60,33 L42,33 Z"
-        android:fillColor="#E0F7FA" />
-
-    <!-- Wallet Leather Folder -->
-    <path
-        android:pathData="M26,40 C26,36.13 29.13,33 33,33 L75,33 C78.87,33 82,36.13 82,40 L82,75 C82,78.87 78.87,82 75,82 L33,82 C29.13,82 26,78.87 26,75 Z"
-        android:fillColor="#6200EA" />
-
-    <!-- Wallet Inner Shadow fold -->
-    <path
-        android:pathData="M26,43 C26,39.13 29.13,36 33,36 L75,36 C75,36 71,49 54,49 C37,49 33,36 33,36"
-        android:fillColor="#4A00E0" />
-
-    <!-- Right Side Clasp/Strap -->
-    <path
-        android:pathData="M66,49 C66,45.68 68.68,43 72,43 L82,43 L82,61 L72,61 C68.68,61 66,58.32 66,55 Z"
-        android:fillColor="#7C4DFF" />
-
-    <!-- Metallic Stud -->
-    <path
-        android:pathData="M73,52 A3,3 0 1,1 72.99,51.99 Z"
-        android:fillColor="#00E5FF" />
-
-    <!-- Floating Loyalty Heart Emblem -->
-    <path
-        android:pathData="M43,47 C37,47 32,51.5 32,58 C32,65 40,73.5 43,76.5 C46,73.5 54,65 54,58 C54,51.5 49,47 43,47 Z"
-        android:fillColor="#00B0FF" />
-    <path
-        android:pathData="M43,50 C39.2,50 35.5,53.2 35.5,58 C35.5,63.2 41.5,70.2 43,72 C44.5,70.2 50.5,63.2 50.5,58 C50.5,53.2 46.8,50 43,50 Z"
-        android:fillColor="#00E5FF" />
-
-    <!-- Mini Handshake Icon inside Heart (Stylized vectors representing the two hands clasping) -->
-    <path
-        android:pathData="M40,57 C41,55.5 42,55.5 43,57 L46,60 L44,62 L41,59 Z"
-        android:fillColor="#FFFFFF" />
-    <path
-        android:pathData="M46,57 C45,55.5 44,55.5 43,57 L40,60 L42,62 L45,59 Z"
-        android:fillColor="#E0F7FA" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="72dp"
+        android:height="72dp"
+        android:drawable="@drawable/img_app_icon_foreground"
+        android:gravity="center" />
+</layer-list>
