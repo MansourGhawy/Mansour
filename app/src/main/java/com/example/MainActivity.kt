@@ -390,9 +390,8 @@ fun AppNavigationContainer(
                         }
 
                         is AppScreen.AddCustomer -> {
-                            val addScreen = currentScreen as AppScreen.AddCustomer
                             CustomerForm(
-                                initialName = addScreen.initialName,
+                                initialName = targetScreen.initialName,
                                 viewModel = viewModel,
                                 isDark = isDark,
                                 onBackClick = { navigateBack() }
