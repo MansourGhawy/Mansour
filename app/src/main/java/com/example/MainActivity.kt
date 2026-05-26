@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
@@ -33,6 +34,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -156,98 +162,200 @@ fun AppNavigationContainer(
     Box(modifier = Modifier.fillMaxSize()) {
         if (showExitDialog) {
             var donotShowAgain by remember { mutableStateOf(false) }
-            androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showExitDialog = false },
+                properties = androidx.compose.ui.window.DialogProperties(
+                    usePlatformDefaultWidth = false
+                )
             ) {
-                AlertDialog(
-                    onDismissRequest = { showExitDialog = false },
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White,
-                    title = {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
+                ) {
+                    androidx.compose.material3.Surface(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(24.dp)
+                            ),
+                        shape = RoundedCornerShape(24.dp),
+                        color = if (isDark) Color(0xFF1E1D2F) else Color.White
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // Header Icon Container
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .background(
+                                        color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFF0EDFF),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                    contentDescription = "تسجيل الخروج",
+                                    tint = PrimaryPurple,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Title TextView
                             Text(
                                 text = "تأكيد الخروج",
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryPurple,
+                                color = if (isDark) Color(0xFFC3BCF8) else Color(0xFF3A2C85),
                                 fontSize = 18.sp,
                                 textAlign = TextAlign.Center
                             )
-                        }
-                    },
-                    text = {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Description TextView
                             Text(
                                 text = "هل أنت متأكد من رغبتك في الخروج من تطبيق حسابات حبايب؟",
-                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF2D3436),
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF4B5563),
                                 fontSize = 14.sp,
                                 textAlign = TextAlign.Center,
-                                lineHeight = 20.sp,
+                                lineHeight = 22.sp,
                                 modifier = Modifier.fillMaxWidth()
                             )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // Checkbox Row
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Start,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { donotShowAgain = !donotShowAgain }
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Checkbox(
-                                    checked = donotShowAgain,
-                                    onCheckedChange = { donotShowAgain = it },
-                                    modifier = Modifier.testTag("skip_exit_checkbox"),
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = PrimaryPurple,
-                                        uncheckedColor = if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1)
+                                    .clickable(
+                                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { donotShowAgain = !donotShowAgain }
                                     )
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(
+                                            color = if (donotShowAgain) PrimaryPurple else Color.Transparent,
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .border(
+                                            width = 1.5.dp,
+                                            color = if (donotShowAgain) PrimaryPurple else (if (isDark) Color(0xFF42405F) else Color(0xFFD1D5DB)),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .testTag("skip_exit_checkbox"),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (donotShowAgain) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(10.dp))
+
                                 Text(
                                     text = "عدم الإظهار مجدداً",
                                     fontSize = 13.sp,
-                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF2D3436),
+                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF4B5563),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
-                        }
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                if (donotShowAgain) {
-                                    prefs.edit().putBoolean("skip_exit_dialog", true).apply()
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // Action Buttons Row (RTL Compliant - Horizontal)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Button 1: Cancel/Stay ("متابعة العمل" - prominent brand gradient)
+                                Button(
+                                    onClick = { showExitDialog = false },
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Transparent
+                                    ),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(),
+                                    modifier = Modifier
+                                        .weight(1.2f)
+                                        .height(44.dp)
+                                        .testTag("exit_dismiss_button")
+                                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(24.dp))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF6C5CE7),
+                                                        Color(0xFF5A49D8)
+                                                    )
+                                                ),
+                                                shape = RoundedCornerShape(24.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "متابعة العمل",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                    }
                                 }
-                                showExitDialog = false
-                                activity?.finish()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE74C3C)),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .testTag("exit_confirm_button")
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            Text("خروج", color = Color.White, fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showExitDialog = false },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .testTag("exit_dismiss_button")
-                                .padding(horizontal = 4.dp)
-                        ) {
-                            Text("إلغاء", color = PrimaryPurple, fontWeight = FontWeight.Bold)
+
+                                // Button 2: Exit ("خروج" - soft coral red tint)
+                                Button(
+                                    onClick = {
+                                        if (donotShowAgain) {
+                                            prefs.edit().putBoolean("skip_exit_dialog", true).apply()
+                                        }
+                                        showExitDialog = false
+                                        activity?.finish()
+                                    },
+                                    shape = RoundedCornerShape(24.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isDark) Color(0xFF3F2327) else Color(0xFFFFF1F0)
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        width = 1.dp,
+                                        color = if (isDark) Color(0xFFEF4444).copy(alpha = 0.5f) else Color(0xFFFCA5A5)
+                                    ),
+                                    modifier = Modifier
+                                        .weight(0.8f)
+                                        .height(44.dp)
+                                        .testTag("exit_confirm_button")
+                                ) {
+                                    Text(
+                                        text = "خروج",
+                                        color = Color(0xFFEF4444),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
                         }
                     }
-                )
+                }
             }
         }
 
