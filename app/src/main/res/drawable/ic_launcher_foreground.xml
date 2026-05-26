@@ -1,30 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+    
+    <!-- Background Card Sliding Out -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M36,32 C36,29.24 38.24,27 41,27 L67,27 C69.76,27 72,29.24 72,32 L72,39 L36,39 Z"
+        android:fillColor="#00E5FF" />
+    <path
+        android:pathData="M42,31 L60,31 L60,33 L42,33 Z"
+        android:fillColor="#E0F7FA" />
+
+    <!-- Wallet Leather Folder -->
+    <path
+        android:pathData="M26,40 C26,36.13 29.13,33 33,33 L75,33 C78.87,33 82,36.13 82,40 L82,75 C82,78.87 78.87,82 75,82 L33,82 C29.13,82 26,78.87 26,75 Z"
+        android:fillColor="#6200EA" />
+
+    <!-- Wallet Inner Shadow fold -->
+    <path
+        android:pathData="M26,43 C26,39.13 29.13,36 33,36 L75,36 C75,36 71,49 54,49 C37,49 33,36 33,36"
+        android:fillColor="#4A00E0" />
+
+    <!-- Right Side Clasp/Strap -->
+    <path
+        android:pathData="M66,49 C66,45.68 68.68,43 72,43 L82,43 L82,61 L72,61 C68.68,61 66,58.32 66,55 Z"
+        android:fillColor="#7C4DFF" />
+
+    <!-- Metallic Stud -->
+    <path
+        android:pathData="M73,52 A3,3 0 1,1 72.99,51.99 Z"
+        android:fillColor="#00E5FF" />
+
+    <!-- Floating Loyalty Heart Emblem -->
+    <path
+        android:pathData="M43,47 C37,47 32,51.5 32,58 C32,65 40,73.5 43,76.5 C46,73.5 54,65 54,58 C54,51.5 49,47 43,47 Z"
+        android:fillColor="#00B0FF" />
+    <path
+        android:pathData="M43,50 C39.2,50 35.5,53.2 35.5,58 C35.5,63.2 41.5,70.2 43,72 C44.5,70.2 50.5,63.2 50.5,58 C50.5,53.2 46.8,50 43,50 Z"
+        android:fillColor="#00E5FF" />
+
+    <!-- Mini Handshake Icon inside Heart (Stylized vectors representing the two hands clasping) -->
+    <path
+        android:pathData="M40,57 C41,55.5 42,55.5 43,57 L46,60 L44,62 L41,59 Z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M46,57 C45,55.5 44,55.5 43,57 L40,60 L42,62 L45,59 Z"
+        android:fillColor="#E0F7FA" />
 </vector>

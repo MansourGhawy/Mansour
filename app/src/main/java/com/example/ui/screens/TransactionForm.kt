@@ -18,6 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -572,191 +575,193 @@ fun TransactionForm(
             dragHandle = { BottomSheetDefaults.DragHandle() },
             tonalElevation = 8.dp
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "الآلة الحاسبة السريعة",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color.White else PrimaryPurple
-                    )
-                    Text(
-                        text = if (txType == "DEBT") "دين عليه" else "تسديد منه",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (txType == "DEBT") debtRed else paymentGreen,
-                        modifier = Modifier
-                            .background(
-                                (if (txType == "DEBT") debtRed else paymentGreen).copy(alpha = 0.12f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-
-                // Calculator Display
-                Box(
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (isDark) Color(0xFF161524) else Color.White)
-                        .border(
-                            BorderStroke(1.dp, if (isDark) Color(0xFF2D2C45) else Color(0xFFE2E2FF)),
-                            RoundedCornerShape(16.dp)
-                        )
-                        .padding(16.dp),
-                    contentAlignment = Alignment.CenterEnd
+                        .navigationBarsPadding()
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.End
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (calcExpression.isEmpty()) "٠" else calcExpression,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
-                            color = if (isDark) Color.White else Color(0xFF2D3436)
+                            text = "الآلة الحاسبة السريعة",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color.White else PrimaryPurple
                         )
-                        val previewVal = evaluateExpression(calcExpression)
-                        if (previewVal != null) {
-                            val formattedPreview = if (previewVal % 1.0 == 0.0) {
-                                previewVal.toLong().toString()
-                            } else {
-                                "%.2f".format(Locale.ENGLISH, previewVal)
-                            }
-                            Text(
-                                text = "= $formattedPreview",
-                                fontSize = 15.sp,
-                                color = if (txType == "DEBT") debtRed else paymentGreen,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        } else {
-                            Spacer(modifier = Modifier.height(20.dp))
-                        }
+                        Text(
+                            text = if (txType == "DEBT") "دين عليه" else "تسديد منه",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (txType == "DEBT") debtRed else paymentGreen,
+                            modifier = Modifier
+                                .background(
+                                    (if (txType == "DEBT") debtRed else paymentGreen).copy(alpha = 0.12f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
-                }
 
-                // Keys layout
-                val btnBg = if (isDark) Color(0xFF2D2C45) else Color(0xFFE2E3ED)
-                val operatorBg = PrimaryPurple.copy(alpha = 0.15f)
-                val textCol = if (isDark) Color.White else Color(0xFF2D3436)
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "7" }, contentAlignment = Alignment.Center) { Text("7", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "8" }, contentAlignment = Alignment.Center) { Text("8", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "9" }, contentAlignment = Alignment.Center) { Text("9", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "/" }, contentAlignment = Alignment.Center) { Text("/", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "4" }, contentAlignment = Alignment.Center) { Text("4", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "5" }, contentAlignment = Alignment.Center) { Text("5", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "6" }, contentAlignment = Alignment.Center) { Text("6", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "*" }, contentAlignment = Alignment.Center) { Text("×", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "1" }, contentAlignment = Alignment.Center) { Text("1", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "2" }, contentAlignment = Alignment.Center) { Text("2", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "3" }, contentAlignment = Alignment.Center) { Text("3", fontWeight = FontWeight.Bold, color = textCol) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "-" }, contentAlignment = Alignment.Center) { Text("-", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { if (!calcExpression.endsWith(".")) calcExpression += "." }, contentAlignment = Alignment.Center) { Text(".", fontWeight = FontWeight.Bold, color = textCol, fontSize = 18.sp) }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "0" }, contentAlignment = Alignment.Center) { Text("0", fontWeight = FontWeight.Bold, color = textCol) }
+                    // Calculator Display
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1.5f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background((if (txType == "DEBT") debtRed else paymentGreen).copy(alpha = 0.15f))
-                            .clickable {
-                                val eval = evaluateExpression(calcExpression)
-                                if (eval != null) {
-                                    calcExpression = if (eval % 1.0 == 0.0) {
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isDark) Color(0xFF161524) else Color.White)
+                            .border(
+                                BorderStroke(1.dp, if (isDark) Color(0xFF2D2C45) else Color(0xFFE2E2FF)),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .padding(16.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.End
+                        ) {
+                            Text(
+                                text = if (calcExpression.isEmpty()) "٠" else calcExpression,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isDark) Color.White else Color(0xFF2D3436)
+                            )
+                            val previewVal = evaluateExpression(calcExpression)
+                            if (previewVal != null) {
+                                val formattedPreview = if (previewVal % 1.0 == 0.0) {
+                                    previewVal.toLong().toString()
+                                } else {
+                                    "%.2f".format(Locale.ENGLISH, previewVal)
+                                }
+                                Text(
+                                    text = "= $formattedPreview",
+                                    fontSize = 15.sp,
+                                    color = if (txType == "DEBT") debtRed else paymentGreen,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.height(20.dp))
+                            }
+                        }
+                    }
+
+                    // Keys layout
+                    val btnBg = if (isDark) Color(0xFF2D2C45) else Color(0xFFE2E3ED)
+                    val operatorBg = PrimaryPurple.copy(alpha = 0.15f)
+                    val textCol = if (isDark) Color.White else Color(0xFF2D3436)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "/" }, contentAlignment = Alignment.Center) { Text("/", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "9" }, contentAlignment = Alignment.Center) { Text("9", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "8" }, contentAlignment = Alignment.Center) { Text("8", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "7" }, contentAlignment = Alignment.Center) { Text("7", fontWeight = FontWeight.Bold, color = textCol) }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "*" }, contentAlignment = Alignment.Center) { Text("×", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "6" }, contentAlignment = Alignment.Center) { Text("6", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "5" }, contentAlignment = Alignment.Center) { Text("5", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "4" }, contentAlignment = Alignment.Center) { Text("4", fontWeight = FontWeight.Bold, color = textCol) }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "-" }, contentAlignment = Alignment.Center) { Text("-", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "3" }, contentAlignment = Alignment.Center) { Text("3", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "2" }, contentAlignment = Alignment.Center) { Text("2", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "1" }, contentAlignment = Alignment.Center) { Text("1", fontWeight = FontWeight.Bold, color = textCol) }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "+" }, contentAlignment = Alignment.Center) { Text("+", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1.5f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background((if (txType == "DEBT") debtRed else paymentGreen).copy(alpha = 0.15f))
+                                .clickable {
+                                    val eval = evaluateExpression(calcExpression)
+                                    if (eval != null) {
+                                        calcExpression = if (eval % 1.0 == 0.0) {
+                                            eval.toLong().toString()
+                                        } else {
+                                            "%.2f".format(Locale.ENGLISH, eval)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("=", fontWeight = FontWeight.Bold, color = if (txType == "DEBT") debtRed else paymentGreen, fontSize = 18.sp)
+                        }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "0" }, contentAlignment = Alignment.Center) { Text("0", fontWeight = FontWeight.Bold, color = textCol) }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { if (!calcExpression.endsWith(".")) calcExpression += "." }, contentAlignment = Alignment.Center) { Text(".", fontWeight = FontWeight.Bold, color = textCol, fontSize = 18.sp) }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        val evalAmount = evaluateExpression(calcExpression) ?: calcExpression.toDoubleOrNull()
+                        val isCalcValValid = evalAmount != null && evalAmount > 0.0
+
+                        Button(
+                            onClick = {
+                                val eval = evaluateExpression(calcExpression) ?: calcExpression.toDoubleOrNull()
+                                if (eval != null && eval > 0) {
+                                    amountStr = if (eval % 1.0 == 0.0) {
                                         eval.toLong().toString()
                                     } else {
                                         "%.2f".format(Locale.ENGLISH, eval)
                                     }
+                                    amountError = false
+
+                                    // Slide Down / Confirm Animation Visual Feedback Highlighting
+                                    scope.launch {
+                                        isHighlighted = true
+                                        delay(1200)
+                                        isHighlighted = false
+                                    }
+                                }
+                                showCalculator = false
+
+                                // Auto-focus memo field after closing bottom sheet
+                                scope.launch {
+                                    delay(350) // Wait for bottom sheet slide down
+                                    notesFocusRequester.requestFocus()
                                 }
                             },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("=", fontWeight = FontWeight.Bold, color = if (txType == "DEBT") debtRed else paymentGreen, fontSize = 18.sp)
-                    }
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "+" }, contentAlignment = Alignment.Center) { Text("+", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
-                }
+                            enabled = isCalcValValid, // Zero-Value protection on apply button
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (txType == "DEBT") debtRed else paymentGreen,
+                                disabledContainerColor = (if (txType == "DEBT") debtRed else paymentGreen).copy(alpha = 0.35f)
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .weight(0.7f)
+                                .height(54.dp)
+                        ) {
+                            Text("تأكيد الحساب", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { calcExpression = "" },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .weight(0.3f)
-                            .height(54.dp),
-                        border = BorderStroke(1.dp, if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = if (isDark) Color.White else Color.Black)
-                    ) {
-                        Text("مسح", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-
-                    val evalAmount = evaluateExpression(calcExpression) ?: calcExpression.toDoubleOrNull()
-                    val isCalcValValid = evalAmount != null && evalAmount > 0.0
-
-                    Button(
-                        onClick = {
-                            val eval = evaluateExpression(calcExpression) ?: calcExpression.toDoubleOrNull()
-                            if (eval != null && eval > 0) {
-                                amountStr = if (eval % 1.0 == 0.0) {
-                                    eval.toLong().toString()
-                                } else {
-                                    "%.2f".format(Locale.ENGLISH, eval)
-                                }
-                                amountError = false
-
-                                // Slide Down / Confirm Animation Visual Feedback Highlighting
-                                scope.launch {
-                                    isHighlighted = true
-                                    delay(1200)
-                                    isHighlighted = false
-                                }
-                            }
-                            showCalculator = false
-
-                            // Auto-focus memo field after closing bottom sheet
-                            scope.launch {
-                                delay(350) // Wait for bottom sheet slide down
-                                notesFocusRequester.requestFocus()
-                            }
-                        },
-                        enabled = isCalcValValid, // Zero-Value protection on apply button
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (txType == "DEBT") debtRed else paymentGreen,
-                            disabledContainerColor = (if (txType == "DEBT") debtRed else paymentGreen).copy(alpha = 0.35f)
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .weight(0.7f)
-                            .height(54.dp)
-                    ) {
-                        Text("تأكيد القيمة (Apply)", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        OutlinedButton(
+                            onClick = { calcExpression = "" },
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .weight(0.3f)
+                                .height(54.dp),
+                            border = BorderStroke(1.dp, if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = if (isDark) Color.White else Color.Black)
+                        ) {
+                            Text("مسح", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
                     }
                 }
             }
