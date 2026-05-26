@@ -16,12 +16,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -155,65 +158,99 @@ fun AppNavigationContainer(
     Box(modifier = Modifier.fillMaxSize()) {
         if (showExitDialog) {
             var donotShowAgain by remember { mutableStateOf(false) }
-            AlertDialog(
-                onDismissRequest = { showExitDialog = false },
-                title = {
-                    Text(
-                        text = "Confirm Exit",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            text = "Are you sure you want to exit Habayeb Accounts?\n\nهل أنت متأكد من رغبتك في الخروج من تطبيق حسابات حبايب؟",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clickable { donotShowAgain = !donotShowAgain }
-                                .padding(vertical = 4.dp)
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
+            ) {
+                AlertDialog(
+                    onDismissRequest = { showExitDialog = false },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White,
+                    title = {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Checkbox(
-                                checked = donotShowAgain,
-                                onCheckedChange = { donotShowAgain = it },
-                                modifier = Modifier.testTag("skip_exit_checkbox")
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Don't show this again. | عدم الإظهار مجدداً",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
+                                text = "تأكيد الخروج",
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryPurple,
+                                fontSize = 18.sp,
+                                textAlign = TextAlign.Center
                             )
                         }
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (donotShowAgain) {
-                                prefs.edit().putBoolean("skip_exit_dialog", true).apply()
+                    },
+                    text = {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "هل أنت متأكد من رغبتك في الخروج من تطبيق حسابات حبايب؟",
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF2D3436),
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Start,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { donotShowAgain = !donotShowAgain }
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Checkbox(
+                                    checked = donotShowAgain,
+                                    onCheckedChange = { donotShowAgain = it },
+                                    modifier = Modifier.testTag("skip_exit_checkbox"),
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = PrimaryPurple,
+                                        uncheckedColor = if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1)
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "عدم الإظهار مجدداً",
+                                    fontSize = 13.sp,
+                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF2D3436),
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
-                            showExitDialog = false
-                            activity?.finish()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.testTag("exit_confirm_button")
-                    ) {
-                        Text("Exit")
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (donotShowAgain) {
+                                    prefs.edit().putBoolean("skip_exit_dialog", true).apply()
+                                }
+                                showExitDialog = false
+                                activity?.finish()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE74C3C)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .testTag("exit_confirm_button")
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Text("خروج", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showExitDialog = false },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .testTag("exit_dismiss_button")
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Text("إلغاء", color = PrimaryPurple, fontWeight = FontWeight.Bold)
+                        }
                     }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { showExitDialog = false },
-                        modifier = Modifier.testTag("exit_dismiss_button")
-                    ) {
-                        Text("Cancel")
-                    }
-                }
-            )
+                )
+            }
         }
 
         Scaffold(

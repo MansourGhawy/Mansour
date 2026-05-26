@@ -41,7 +41,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
     viewModel: CustomerViewModel,
@@ -108,7 +108,7 @@ fun MainScreen(
                     )
                 )
                 .statusBarsPadding()
-                .padding(top = 10.dp, bottom = 22.dp, start = 20.dp, end = 20.dp)
+                .padding(top = 6.dp, bottom = 14.dp, start = 20.dp, end = 20.dp)
         ) {
             // Header Top Row: Logo & App title + Subtitle with Toggled Search Block
             Row(
@@ -233,7 +233,7 @@ fun MainScreen(
             }
 
             AnimatedVisibility(
-                visible = isSearching && searchQuery.isEmpty() && isSearchFocused && recentSearches.isNotEmpty(),
+                visible = isSearching && searchQuery.isEmpty() && isSearchFocused && recentSearches.isNotEmpty() && !isSelectionMode,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
@@ -305,7 +305,7 @@ fun MainScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
             // Main Balance Card inside Header with sleek background
             Box(
@@ -633,6 +633,7 @@ fun MainScreen(
             ) {
                 items(customersList, key = { it.customer.id }) { item ->
                     CustomerRow(
+                        modifier = Modifier.animateItemPlacement(),
                         item = item,
                         searchQuery = searchQuery,
                         viewModel = viewModel,
@@ -673,6 +674,7 @@ fun MainScreen(
 @Composable
 fun CustomerRow(
     item: CustomerWithBalance,
+    modifier: Modifier = Modifier,
     searchQuery: String = "",
     viewModel: CustomerViewModel,
     isDark: Boolean,
@@ -702,7 +704,7 @@ fun CustomerRow(
     val borderColor = if (isSelected) PrimaryPurple else (if (isDark) Color(0x1F6C5CE7) else Color(0x0F6C5CE7))
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .pointerInput(Unit) {

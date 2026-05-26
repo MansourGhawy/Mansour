@@ -433,21 +433,36 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun addCustomer(name: String, phone: String, notes: String, onSuccess: () -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (name.isBlank()) {
-                    _statusMessage.emit("الاسم مطلوب")
+                    withContext(Dispatchers.Main) {
+                        _statusMessage.emit("الاسم مطلوب")
+                    }
                     return@launch
                 }
-                withContext(Dispatchers.IO) {
+                
+                // Defensive try-catch for Room database insert
+                try {
                     repository.insertCustomer(Customer(name = name, phone = phone, notes = notes))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    withContext(Dispatchers.Main) {
+                        _statusMessage.emit("حدث خطأ أثناء الحفظ، يرجى المحاولة مرة أخرى")
+                    }
+                    return@launch
                 }
-                _statusMessage.emit("تم إضافة الزبون بنجاح")
-                triggerVibration()
-                onSuccess()
+                
+                withContext(Dispatchers.Main) {
+                    _statusMessage.emit("تم إضافة الزبون بنجاح")
+                    triggerVibration()
+                    onSuccess()
+                }
             } catch (t: Throwable) {
                 t.printStackTrace()
-                _statusMessage.emit("فشل إضافة الزبون: ${t.localizedMessage}")
+                withContext(Dispatchers.Main) {
+                    _statusMessage.emit("حدث خطأ أثناء الحفظ، يرجى المحاولة مرة أخرى")
+                }
             }
         }
     }

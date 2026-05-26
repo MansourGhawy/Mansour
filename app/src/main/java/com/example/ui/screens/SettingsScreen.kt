@@ -838,27 +838,31 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        "تطبيق حسابات حبايب",
+                        text = "تطبيق حسابات حبايب",
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 14.sp,
                         color = PrimaryPurple,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "تصميم وتطوير م/منصور قطينه للبرمجيات",
+                        text = "تصميم وتطوير م/منصور قطينه للبرمجيات",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isDark) Color.White else Color(0xFF2D3436),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
                             .clip(RoundedCornerShape(8.dp))
                             .clickable {
                                 try {
@@ -873,7 +877,8 @@ fun SettingsScreen(
                             }
                             .background(Color(0xFF2ECC71).copy(alpha = 0.15f))
                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Chat,
@@ -883,7 +888,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            "WhatsApp: 00967774004399",
+                            text = "WhatsApp: 00967774004399",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF2ECC71),
@@ -892,11 +897,12 @@ fun SettingsScreen(
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        "الإصدار: v1.0.0 (بدون إنترنت آمن)\nأندرويد متوافق مع نظام كيتكات ومستويات API 24+",
+                        text = "الإصدار: v1.0.0 (بدون إنترنت آمن)\nأندرويد متوافق مع نظام كيتكات ومستويات API 24+",
                         fontSize = 10.sp,
                         color = Color.Gray,
                         textAlign = TextAlign.Center,
-                        lineHeight = 14.sp
+                        lineHeight = 14.sp,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
