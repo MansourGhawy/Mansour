@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -25,10 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -108,7 +106,7 @@ fun AppNavigationContainer(
     }
 
     // Custom Backstack State Machine
-    val screenHistory = remember { mutableStateListOf<AppScreen>(AppScreen.Splash) }
+    var screenHistory by remember { mutableStateOf<List<AppScreen>>(listOf(AppScreen.Splash)) }
     val currentScreen = screenHistory.lastOrNull() ?: AppScreen.Dashboard
 
     val isFingerprintEnabled by viewModel.isFingerprintEnabled.collectAsState()
@@ -132,7 +130,7 @@ fun AppNavigationContainer(
     val isLocked = currentScreen != AppScreen.Splash && isFingerprintEnabled && !isAppUnlocked
     BackHandler(enabled = !isLocked) {
         if (screenHistory.size > 1) {
-            screenHistory.removeAt(screenHistory.size - 1)
+            screenHistory = screenHistory.dropLast(1)
         } else {
             // Check skip_exit_dialog setting
             val skipExitDialog = prefs.getBoolean("skip_exit_dialog", false)
@@ -146,12 +144,12 @@ fun AppNavigationContainer(
 
     // Helper navigators
     fun navigateTo(screen: AppScreen) {
-        screenHistory.add(screen)
+        screenHistory = screenHistory + screen
     }
 
     fun navigateBack() {
         if (screenHistory.size > 1) {
-            screenHistory.removeAt(screenHistory.size - 1)
+            screenHistory = screenHistory.dropLast(1)
         }
     }
 
@@ -349,21 +347,15 @@ fun AppNavigationContainer(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                AnimatedContent(
+                Crossfade(
                     targetState = currentScreen,
-                    transitionSpec = {
-                        fadeIn(animationSpec = spring()) togetherWith fadeOut(animationSpec = spring())
-                    },
                     label = "ScreenTransitions"
                 ) { targetScreen ->
                     when (targetScreen) {
                         is AppScreen.Splash -> {
                             SplashScreen(isDark = isDark) {
                                 isAppUnlocked = false // force lock screen evaluation on startup
-                                screenHistory.add(AppScreen.Dashboard)
-                                if (screenHistory.contains(AppScreen.Splash)) {
-                                    screenHistory.remove(AppScreen.Splash)
-                                }
+                                screenHistory = listOf(AppScreen.Dashboard)
                             }
                         }
 

@@ -436,7 +436,8 @@ fun CustomerDetail(
     }
 
     // Confirmation Popup Dialog for Deleting Customer or Transaction
-    if (showDeleteConfirmDialog && customerToDelete != null) {
+    val currentCustToDelete = customerToDelete
+    if (showDeleteConfirmDialog && currentCustToDelete != null) {
         AlertDialog(
             onDismissRequest = {
                 showDeleteConfirmDialog = false
@@ -447,13 +448,13 @@ fun CustomerDetail(
             },
             text = {
                 Text(
-                    "هل أنت متأكد تماماً من حذف الزبون '${customerToDelete!!.name}' ومسح سجله المالي بالكامل؟\nهذا الإجراء لا يمكن التراجع عنه مطلقاً."
+                    "هل أنت متأكد تماماً من حذف الزبون '${currentCustToDelete.name}' ومسح سجله المالي بالكامل؟\nهذا الإجراء لا يمكن التراجع عنه مطلقاً."
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteCustomer(customerToDelete!!) {
+                        viewModel.deleteCustomer(currentCustToDelete) {
                             onBackClick()
                         }
                         showDeleteConfirmDialog = false
@@ -475,22 +476,23 @@ fun CustomerDetail(
         )
     }
 
-    if (transactionToDelete != null) {
+    val currentTransToDelete = transactionToDelete
+    if (currentTransToDelete != null) {
         AlertDialog(
             onDismissRequest = { transactionToDelete = null },
             title = {
                 Text("تأكيد حذف المعاملة", color = NegativeRed, fontWeight = FontWeight.Bold)
             },
             text = {
-                val actionType = if (transactionToDelete!!.type == "DEBT") "دين عليه" else "تسديد منه"
+                val actionType = if (currentTransToDelete.type == "DEBT") "دين عليه" else "تسديد منه"
                 Text(
-                    "هل أنت متأكد من حذف معاملة الـ ($actionType) بمبلغ: ${viewModel.formatCurrency(transactionToDelete!!.amount)}؟"
+                    "هل أنت متأكد من حذف معاملة الـ ($actionType) بمبلغ: ${viewModel.formatCurrency(currentTransToDelete.amount)}؟"
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteTransaction(transactionToDelete!!)
+                        viewModel.deleteTransaction(currentTransToDelete)
                         transactionToDelete = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NegativeRed)

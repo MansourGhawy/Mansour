@@ -340,7 +340,7 @@ class CustomerViewModel(application: Application) : AndroidViewModel(application
 
     // Details of the currently selected customer
     val selectedCustomerDetail: StateFlow<CustomerWithBalance?> = combine(
-        customersWithBalances,
+        allCustomersWithBalances,
         _selectedCustomerId
     ) { list, id ->
         if (id != null) {

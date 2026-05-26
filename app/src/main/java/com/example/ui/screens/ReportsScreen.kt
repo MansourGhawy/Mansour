@@ -79,7 +79,8 @@ fun ReportsScreen(
     
     val dormantDebtors = remember(customersList) {
         customersList.filter { 
-            it.netBalance > 0 && (it.lastTransactionTime == null || (currentTime - it.lastTransactionTime!!) > thirtyDaysMs)
+            val lastTime = it.lastTransactionTime
+            it.netBalance > 0 && (lastTime == null || (currentTime - lastTime) > thirtyDaysMs)
         }
     }
 
