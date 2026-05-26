@@ -2,6 +2,11 @@ package com.example.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -359,21 +364,39 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(8.dp)) // Pull these two boxes UP: exactly 8dp gap
 
-            // 2. Symmetrical Quick Stats Chips
+            // 2. Symmetrical Quick Stats Chips (Re-architected)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // Stats Card 1: لي عند الناس (Receivables) -> INVERTED TO BRIGHT RED
                 val isGreenActive = filterOption == com.example.ui.viewmodel.FilterOption.RECEIVABLES
-                val greenScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isGreenActive && !isSelectionMode) 1.05f else 1.0f)
+                val interactionSource1 = remember { MutableInteractionSource() }
+                val isPressed1 by interactionSource1.collectIsPressedAsState()
+                val targetScale1 = if (isPressed1) 0.97f else (if (isGreenActive && !isSelectionMode) 1.05f else 1.0f)
+                val greenScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = targetScale1,
+                    animationSpec = if (isPressed1) {
+                        androidx.compose.animation.core.tween(durationMillis = 100, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                    } else {
+                        androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 300f)
+                    }
+                )
 
-                // Stats Card 1: لي عند الناس (Debts due to me)
+                val coralRed = Color(0xFFEF4444)
+                val lightRoseBorder = if (isDark) Color(0xFF5A2222) else Color(0xFFFEE2E2)
+                val softRoseBg = if (isDark) Color(0xFF3B1E1E) else Color(0xFFFEF2F2)
+
                 Card(
                     modifier = Modifier
                         .weight(1f)
                         .scale(greenScale)
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable(enabled = !isSelectionMode) {
+                        .clickable(
+                            interactionSource = interactionSource1,
+                            indication = LocalIndication.current,
+                            enabled = !isSelectionMode
+                        ) {
                             keyboardController?.hide()
                             if (isGreenActive) {
                                 viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
@@ -386,29 +409,29 @@ fun MainScreen(
                     ),
                     border = BorderStroke(
                         width = if (isGreenActive && !isSelectionMode) 2.dp else 1.dp,
-                        color = if (isGreenActive && !isSelectionMode) PrimaryPurple else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFE5E7EB))
+                        color = if (isGreenActive && !isSelectionMode) coralRed else lightRoseBorder
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 6.dp else 0.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 4.dp else 0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        // Icon Container (Circle) with Soft Rose Tint and Coral Red Arrow Up
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .background(
-                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFEEF2F6),
-                                    shape = CircleShape
-                                ),
+                                .background(color = softRoseBg, shape = CircleShape)
+                                .border(BorderStroke(1.5.dp, coralRed), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.TrendingUp,
-                                contentDescription = "ما لي",
-                                tint = Color(0xFF5F4BDB),
+                                imageVector = Icons.Default.ArrowUpward,
+                                contentDescription = "لي عند الناس",
+                                tint = coralRed,
                                 modifier = Modifier.size(16.dp)
+                                    .align(Alignment.Center)
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -416,33 +439,53 @@ fun MainScreen(
                                 text = "لي عند الناس",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
+                                color = Color(0xFF6B7280), // Medium grey as requested
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = viewModel.formatCurrency(totalTheyOweMe),
-                                fontSize = 14.sp,
+                            val rawAmount1 = java.text.NumberFormat.getNumberInstance(java.util.Locale.US).apply {
+                                minimumFractionDigits = 0
+                                maximumFractionDigits = 2
+                            }.format(totalTheyOweMe)
+                            AutoSizingText(
+                                text = "$rawAmount1 ر.ي",
+                                color = coralRed,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFFF3F4F6) else Color(0xFF1F2937),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
                 }
 
+                // Stats Card 2: علي للناس (Payables) -> INVERTED TO BRIGHT GREEN
                 val isRedActive = filterOption == com.example.ui.viewmodel.FilterOption.PAYABLES
-                val redScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isRedActive && !isSelectionMode) 1.05f else 1.0f)
+                val interactionSource2 = remember { MutableInteractionSource() }
+                val isPressed2 by interactionSource2.collectIsPressedAsState()
+                val targetScale2 = if (isPressed2) 0.97f else (if (isRedActive && !isSelectionMode) 1.05f else 1.0f)
+                val redScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = targetScale2,
+                    animationSpec = if (isPressed2) {
+                        androidx.compose.animation.core.tween(durationMillis = 100, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+                    } else {
+                        androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 300f)
+                    }
+                )
 
-                // Stats Card 2: علي للناس (Debts I owe to others)
+                val emeraldGreen = Color(0xFF10B981)
+                val lightMintBorder = if (isDark) Color(0xFF163C2E) else Color(0xFFD1FAE5)
+                val softMintBg = if (isDark) Color(0xFF0F2B1F) else Color(0xFFECFDF5)
+
                 Card(
                     modifier = Modifier
                         .weight(1f)
                         .scale(redScale)
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable(enabled = !isSelectionMode) {
+                        .clickable(
+                            interactionSource = interactionSource2,
+                            indication = LocalIndication.current,
+                            enabled = !isSelectionMode
+                        ) {
                             keyboardController?.hide()
                             if (isRedActive) {
                                 viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
@@ -455,29 +498,29 @@ fun MainScreen(
                     ),
                     border = BorderStroke(
                         width = if (isRedActive && !isSelectionMode) 2.dp else 1.dp,
-                        color = if (isRedActive && !isSelectionMode) PrimaryPurple else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFE5E7EB))
+                        color = if (isRedActive && !isSelectionMode) emeraldGreen else lightMintBorder
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 6.dp else 0.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 4.dp else 0.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        // Icon Container (Circle) with Soft Mint Tint and Emerald Green Arrow Down
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .background(
-                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFEEF2F6),
-                                    shape = CircleShape
-                                ),
+                                .background(color = softMintBg, shape = CircleShape)
+                                .border(BorderStroke(1.5.dp, emeraldGreen), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.TrendingDown,
-                                contentDescription = "عليّ",
-                                tint = Color(0xFF5F4BDB),
+                                imageVector = Icons.Default.ArrowDownward,
+                                contentDescription = "علي للناس",
+                                tint = emeraldGreen,
                                 modifier = Modifier.size(16.dp)
+                                    .align(Alignment.Center)
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -485,18 +528,20 @@ fun MainScreen(
                                 text = "علي للناس",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
+                                color = Color(0xFF6B7280), // Medium grey as requested
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = viewModel.formatCurrency(totalIMeOwe),
-                                fontSize = 14.sp,
+                            val rawAmount2 = java.text.NumberFormat.getNumberInstance(java.util.Locale.US).apply {
+                                minimumFractionDigits = 0
+                                maximumFractionDigits = 2
+                            }.format(totalIMeOwe)
+                            AutoSizingText(
+                                text = "$rawAmount2 ر.ي",
+                                color = emeraldGreen,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isDark) Color(0xFFF3F4F6) else Color(0xFF1F2937),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
@@ -863,3 +908,32 @@ fun CustomerRow(
         }
     }
 }
+
+@Composable
+fun AutoSizingText(
+    text: String,
+    color: Color,
+    fontWeight: FontWeight,
+    modifier: Modifier = Modifier,
+    minFontSize: androidx.compose.ui.unit.TextUnit = 10.sp,
+    maxFontSize: androidx.compose.ui.unit.TextUnit = 18.sp
+) {
+    var fontSizeValue by remember(text) { mutableStateOf(maxFontSize.value) }
+    
+    Text(
+        text = text,
+        color = color,
+        fontWeight = fontWeight,
+        fontSize = fontSizeValue.sp,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        onTextLayout = { textLayoutResult ->
+            if (textLayoutResult.hasVisualOverflow && fontSizeValue > minFontSize.value) {
+                fontSizeValue = (fontSizeValue - 0.5f).coerceAtLeast(minFontSize.value)
+            }
+        },
+        modifier = modifier
+    )
+}
+
