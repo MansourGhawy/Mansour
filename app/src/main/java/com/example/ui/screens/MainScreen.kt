@@ -337,21 +337,22 @@ fun MainScreen(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
-                    verticalAlignment = Alignment.Bottom,
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
+                    val formattedNumber = java.text.NumberFormat.getNumberInstance(java.util.Locale.US).format(totalNet)
                     Text(
-                        text = viewModel.formatCurrency(totalNet),
+                        text = formattedNumber,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "ريال يمني",
-                        fontSize = 10.sp,
-                        color = Color.White.copy(alpha = 0.75f),
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        text = "ر.ي",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }
@@ -371,7 +372,7 @@ fun MainScreen(
                     modifier = Modifier
                         .weight(1f)
                         .scale(greenScale)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable(enabled = !isSelectionMode) {
                             keyboardController?.hide()
                             if (isGreenActive) {
@@ -383,40 +384,48 @@ fun MainScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                     ),
-                    border = BorderStroke(if (isGreenActive && !isSelectionMode) 2.dp else 1.dp, if (isGreenActive && !isSelectionMode) PositiveGreen else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
-                    elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 8.dp else 0.dp)
+                    border = BorderStroke(
+                        width = if (isGreenActive && !isSelectionMode) 2.dp else 1.dp,
+                        color = if (isGreenActive && !isSelectionMode) PrimaryPurple else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFE5E7EB))
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 6.dp else 0.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .background(PositiveGreen.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                                .background(
+                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFEEF2F6),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.TrendingUp,
                                 contentDescription = "ما لي",
-                                tint = PositiveGreen,
+                                tint = Color(0xFF5F4BDB),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "لي عند الناس",
-                                fontSize = 10.sp,
-                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF8C90A6),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = viewModel.formatCurrency(totalTheyOweMe),
-                                fontSize = 12.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = PositiveGreen,
+                                color = if (isDark) Color(0xFFF3F4F6) else Color(0xFF1F2937),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -432,7 +441,7 @@ fun MainScreen(
                     modifier = Modifier
                         .weight(1f)
                         .scale(redScale)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .clickable(enabled = !isSelectionMode) {
                             keyboardController?.hide()
                             if (isRedActive) {
@@ -444,40 +453,48 @@ fun MainScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
                     ),
-                    border = BorderStroke(if (isRedActive && !isSelectionMode) 2.dp else 1.dp, if (isRedActive && !isSelectionMode) NegativeRed else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
-                    elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 8.dp else 0.dp)
+                    border = BorderStroke(
+                        width = if (isRedActive && !isSelectionMode) 2.dp else 1.dp,
+                        color = if (isRedActive && !isSelectionMode) PrimaryPurple else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFE5E7EB))
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 6.dp else 0.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
-                                .background(NegativeRed.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                                .background(
+                                    color = if (isDark) Color(0xFF2E2A5D) else Color(0xFFEEF2F6),
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.TrendingDown,
                                 contentDescription = "عليّ",
-                                tint = NegativeRed,
+                                tint = Color(0xFF5F4BDB),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "علي للناس",
-                                fontSize = 10.sp,
-                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF8C90A6),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = viewModel.formatCurrency(totalIMeOwe),
-                                fontSize = 12.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = NegativeRed,
+                                color = if (isDark) Color(0xFFF3F4F6) else Color(0xFF1F2937),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
