@@ -1,11 +1,7 @@
 name: Build My App Now
 
 on:
-  push:
-    branches: [ "main" ] # تأكد أن اسم فرعك main وليس master
-  pull_request:
-    branches: [ "main" ]
-  workflow_dispatch: # هذا لإظهار الزر اليدوي
+  workflow_dispatch: # تفعيل التشغيل اليدوي فقط للاختبار
 
 jobs:
   build:
@@ -21,13 +17,13 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Build with Gradle
+      - name: Build APK
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: App-Package
+          name: App-Release
           path: app/build/outputs/apk/debug/*.apk
