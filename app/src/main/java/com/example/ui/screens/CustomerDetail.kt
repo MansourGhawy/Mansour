@@ -67,9 +67,12 @@ fun CustomerDetail(
     val balance = customerDetail!!.netBalance
     val balanceAbsText = viewModel.formatCurrency(kotlin.math.abs(balance))
 
+    val debtRed = androidx.compose.ui.res.colorResource(id = com.example.R.color.debt_red)
+    val paymentGreen = androidx.compose.ui.res.colorResource(id = com.example.R.color.payment_green)
+
     val themeColor = when {
-        balance > 0 -> PositiveGreen
-        balance < 0 -> NegativeRed
+        balance > 0 -> debtRed
+        balance < 0 -> paymentGreen
         else -> Color.Gray
     }
 
@@ -521,12 +524,15 @@ fun TransactionRow(
     val fDate = sdf.format(Date(transaction.timestamp))
 
     val isDebt = transaction.type == "DEBT"
+    val debtRed = androidx.compose.ui.res.colorResource(id = com.example.R.color.debt_red)
+    val paymentGreen = androidx.compose.ui.res.colorResource(id = com.example.R.color.payment_green)
+
     val cardColor = if (isDebt) {
-        if (isDark) PositiveGreen.copy(alpha=0.06f) else PositiveGreen.copy(alpha=0.04f)
+        if (isDark) debtRed.copy(alpha = 0.06f) else debtRed.copy(alpha = 0.04f)
     } else {
-        if (isDark) NegativeRed.copy(alpha=0.06f) else NegativeRed.copy(alpha=0.04f)
+        if (isDark) paymentGreen.copy(alpha = 0.06f) else paymentGreen.copy(alpha = 0.04f)
     }
-    val mainColor = if (isDebt) PositiveGreen else NegativeRed
+    val mainColor = if (isDebt) debtRed else paymentGreen
     val amountText = (if (isDebt) "+" else "-") + viewModel.formatCurrency(transaction.amount)
 
     Card(

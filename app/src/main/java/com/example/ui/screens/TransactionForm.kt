@@ -114,6 +114,9 @@ fun TransactionForm(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val customerDetail by viewModel.selectedCustomerDetail.collectAsState()
+
+    val debtRed = androidx.compose.ui.res.colorResource(id = com.example.R.color.debt_red)
+    val paymentGreen = androidx.compose.ui.res.colorResource(id = com.example.R.color.payment_green)
     
     // Form fields
     var txType by remember { mutableStateOf(defaultType) }
@@ -251,7 +254,7 @@ fun TransactionForm(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(if (txType == "DEBT") PositiveGreen else Color.Transparent)
+                        .background(if (txType == "DEBT") debtRed else Color.Transparent)
                         .clickable { txType = "DEBT" }
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -269,7 +272,7 @@ fun TransactionForm(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(if (txType == "PAYMENT") NegativeRed else Color.Transparent)
+                        .background(if (txType == "PAYMENT") paymentGreen else Color.Transparent)
                         .clickable { txType = "PAYMENT" }
                         .padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
@@ -301,7 +304,7 @@ fun TransactionForm(
                     Text(
                         "YR",
                         fontWeight = FontWeight.Black,
-                        color = if (txType == "DEBT") PositiveGreen else NegativeRed,
+                        color = if (txType == "DEBT") debtRed else paymentGreen,
                         modifier = Modifier.padding(start = 12.dp, end = 8.dp)
                     )
                 },
@@ -313,9 +316,9 @@ fun TransactionForm(
                         }
                     }) {
                         Icon(
-                            imageVector = Icons.Default.Calculate,
-                            contentDescription = "آلة حاسبة",
-                            tint = if (showCalculator) PrimaryPurple else (if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f))
+                             imageVector = Icons.Default.Calculate,
+                             contentDescription = "آلة حاسبة",
+                             tint = if (showCalculator) PrimaryPurple else (if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f))
                         )
                     }
                 },
@@ -329,15 +332,15 @@ fun TransactionForm(
                 isError = amountError,
                 supportingText = {
                     if (amountError) {
-                        Text("الرجاء إدخال مبلغ صحيح أكبر من صفر", color = NegativeRed)
+                        Text("الرجاء إدخال مبلغ صحيح أكبر من صفر", color = debtRed)
                     }
                 },
                 shape = RoundedCornerShape(18.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (txType == "DEBT") PositiveGreen else NegativeRed,
+                    focusedBorderColor = if (txType == "DEBT") debtRed else paymentGreen,
                     unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1),
-                    errorBorderColor = NegativeRed
+                    errorBorderColor = debtRed
                 )
             )
 
@@ -412,14 +415,14 @@ fun TransactionForm(
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(PositiveGreen.copy(alpha = 0.15f)).clickable { calcExpression = "" }, contentAlignment = Alignment.Center) { Text("مسح", fontWeight = FontWeight.Bold, color = PositiveGreen, fontSize = 12.sp) }
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(paymentGreen.copy(alpha = 0.15f)).clickable { calcExpression = "" }, contentAlignment = Alignment.Center) { Text("مسح", fontWeight = FontWeight.Bold, color = paymentGreen, fontSize = 12.sp) }
                             Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(btnBg).clickable { calcExpression += "0" }, contentAlignment = Alignment.Center) { Text("0", fontWeight = FontWeight.Bold, color = textCol) }
-                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(NegativeRed.copy(alpha = 0.15f)).clickable { 
+                            Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(debtRed.copy(alpha = 0.15f)).clickable { 
                                 val eval = evaluateExpression(calcExpression)
                                 if (eval != null) {
                                     calcExpression = eval.toLong().toString()
                                 }
-                            }, contentAlignment = Alignment.Center) { Text("=", fontWeight = FontWeight.Bold, color = PositiveGreen, fontSize = 18.sp) }
+                            }, contentAlignment = Alignment.Center) { Text("=", fontWeight = FontWeight.Bold, color = paymentGreen, fontSize = 18.sp) }
                             Box(modifier = Modifier.weight(1f).aspectRatio(1.5f).clip(RoundedCornerShape(12.dp)).background(operatorBg).clickable { calcExpression += "+" }, contentAlignment = Alignment.Center) { Text("+", fontWeight = FontWeight.Bold, color = PrimaryPurple, fontSize = 18.sp) }
                         }
 
@@ -452,7 +455,7 @@ fun TransactionForm(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(if (txType == "DEBT") PositiveGreen.copy(alpha = 0.11f) else NegativeRed.copy(alpha = 0.11f))
+                        .background(if (txType == "DEBT") debtRed.copy(alpha = 0.11f) else paymentGreen.copy(alpha = 0.11f))
                         .padding(12.dp)
                 ) {
                     Row(
@@ -461,7 +464,7 @@ fun TransactionForm(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = if (txType == "DEBT") PositiveGreen else NegativeRed,
+                            tint = if (txType == "DEBT") debtRed else paymentGreen,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -469,7 +472,7 @@ fun TransactionForm(
                             text = "المبلغ المكتوب: $dynamicFormattedPrice",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (txType == "DEBT") PositiveGreen else NegativeRed
+                            color = if (txType == "DEBT") debtRed else paymentGreen
                         )
                     }
                 }
@@ -566,7 +569,7 @@ fun TransactionForm(
                 shape = RoundedCornerShape(16.dp),
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = if (txType == "DEBT") PositiveGreen else NegativeRed,
+                    focusedBorderColor = if (txType == "DEBT") debtRed else paymentGreen,
                     unfocusedBorderColor = if (isDark) Color(0xFF323048) else Color(0xFFDCDDE1)
                 )
             )
@@ -575,9 +578,9 @@ fun TransactionForm(
 
             // Save transaction button
             val finalSaveBtnColors = if (txType == "DEBT") {
-                listOf(PositiveGreen, SecondaryTurquoise)
+                listOf(debtRed, debtRed.copy(alpha = 0.85f))
             } else {
-                listOf(NegativeRed, AccentPink)
+                listOf(paymentGreen, paymentGreen.copy(alpha = 0.85f))
             }
 
             GradientButton(

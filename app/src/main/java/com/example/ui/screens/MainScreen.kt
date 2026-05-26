@@ -695,11 +695,14 @@ fun CustomerRow(
     val charLogo = item.customer.name.trim().take(1).uppercase()
     val balanceText = viewModel.formatCurrency(kotlin.math.abs(item.netBalance))
 
+    val debtRed = androidx.compose.ui.res.colorResource(id = com.example.R.color.debt_red)
+    val paymentGreen = androidx.compose.ui.res.colorResource(id = com.example.R.color.payment_green)
+
     // Determine colors based on balance state
-    // "أخضر إذا عليه دين (balance > 0)، أحمر إذا له عندي (balance < 0)، رمادي إذا تساوى"
+    // "أحمر إذا عليه دين (balance > 0)، أخضر إذا له عندي (balance < 0)، رمادي إذا تساوى"
     val indicatorColor = when {
-        item.netBalance > 0 -> PositiveGreen // Receivable (لي عند الناس)
-        item.netBalance < 0 -> NegativeRed   // Payable (علي للناس)
+        item.netBalance > 0 -> debtRed      // Receivable (لي عند الناس / عليه دين)
+        item.netBalance < 0 -> paymentGreen  // Payable (علي للناس / له عندي)
         else -> Color.Gray
     }
 
