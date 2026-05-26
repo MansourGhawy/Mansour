@@ -108,7 +108,7 @@ fun MainScreen(
                     )
                 )
                 .statusBarsPadding()
-                .padding(top = 6.dp, bottom = 14.dp, start = 20.dp, end = 20.dp)
+                .padding(top = 4.dp, bottom = 12.dp, start = 20.dp, end = 20.dp)
         ) {
             // Header Top Row: Logo & App title + Subtitle with Toggled Search Block
             Row(
@@ -185,49 +185,60 @@ fun MainScreen(
                         focusRequester.requestFocus()
                     }
                 } else {
+                    // Center Title / Subtitle dynamically between Search and Wallet Icons
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Far Right (Start of Row in RTL): Wallet Icon Box
                         Box(
                             modifier = Modifier
-                                .size(46.dp)
-                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
-                                .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
+                                .size(40.dp)
+                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.AccountBalanceWallet,
                                 contentDescription = "Wallet Logo",
                                 tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+
+                        // Middle: Title & Subtitle Centered Exactly
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text(
                                 text = "حسابات حبايب",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = Color.White,
+                                textAlign = TextAlign.Center
                             )
                             Text(
                                 text = "إدارة ديونك بكل سهولة",
                                 fontSize = 11.sp,
                                 color = Color.White.copy(alpha = 0.8f),
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center
                             )
                         }
-                    }
 
-                    IconButton(
-                        onClick = { isSearching = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = Color.White
-                        )
+                        // Far Left (End of Row in RTL): Search Icon Button
+                        IconButton(
+                            onClick = { isSearching = true },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -305,181 +316,179 @@ fun MainScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Main Balance Card inside Header with sleek background
-            Box(
+            // Main Balance Card inside Header with compact centered background (Crucial Space Saver)
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.18f))
-                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.White.copy(alpha = 0.15f))
+                    .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
+                Text(
+                    text = "إجمالي الرصيد الصافي",
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.82f),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "إجمالي الرصيد الصافي",
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.Medium
+                        text = viewModel.formatCurrency(totalNet),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
                     )
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = viewModel.formatCurrency(totalNet),
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "ريال",
-                            fontSize = 10.sp,
-                            color = Color.White.copy(alpha = 0.70f),
-                            modifier = Modifier.padding(bottom = 3.dp)
-                        )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "ريال يمني",
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp)) // Pull these two boxes UP: exactly 8dp gap
+
+            // 2. Symmetrical Quick Stats Chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val isGreenActive = filterOption == com.example.ui.viewmodel.FilterOption.RECEIVABLES
+                val greenScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isGreenActive && !isSelectionMode) 1.05f else 1.0f)
+
+                // Stats Card 1: لي عند الناس (Debts due to me)
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .scale(greenScale)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable(enabled = !isSelectionMode) {
+                            keyboardController?.hide()
+                            if (isGreenActive) {
+                                viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
+                            } else {
+                                viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.RECEIVABLES
+                            }
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
+                    ),
+                    border = BorderStroke(if (isGreenActive && !isSelectionMode) 2.dp else 1.dp, if (isGreenActive && !isSelectionMode) PositiveGreen else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 8.dp else 0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(PositiveGreen.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.TrendingUp,
+                                contentDescription = "ما لي",
+                                tint = PositiveGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "لي عند الناس",
+                                fontSize = 10.sp,
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF8C90A6),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = viewModel.formatCurrency(totalTheyOweMe),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PositiveGreen,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                val isRedActive = filterOption == com.example.ui.viewmodel.FilterOption.PAYABLES
+                val redScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isRedActive && !isSelectionMode) 1.05f else 1.0f)
+
+                // Stats Card 2: علي للناس (Debts I owe to others)
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .scale(redScale)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable(enabled = !isSelectionMode) {
+                            keyboardController?.hide()
+                            if (isRedActive) {
+                                viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
+                            } else {
+                                viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.PAYABLES
+                            }
+                        },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
+                    ),
+                    border = BorderStroke(if (isRedActive && !isSelectionMode) 2.dp else 1.dp, if (isRedActive && !isSelectionMode) NegativeRed else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 8.dp else 0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(NegativeRed.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.TrendingDown,
+                                contentDescription = "عليّ",
+                                tint = NegativeRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "علي للناس",
+                                fontSize = 10.sp,
+                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF8C90A6),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = viewModel.formatCurrency(totalIMeOwe),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NegativeRed,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // 2. Overlapping Quick Stats Chips (-16.dp offset vertical overlap)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = (-16).dp)
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val isGreenActive = filterOption == com.example.ui.viewmodel.FilterOption.RECEIVABLES
-            val greenScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isGreenActive && !isSelectionMode) 1.05f else 1.0f)
-
-            // Stats Card 1: لي عند الناس (Debts due to me)
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .scale(greenScale)
-                    .clip(RoundedCornerShape(18.dp))
-                    .clickable(enabled = !isSelectionMode) {
-                        keyboardController?.hide()
-                        if (isGreenActive) {
-                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
-                        } else {
-                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.RECEIVABLES
-                        }
-                    },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
-                ),
-                border = BorderStroke(if (isGreenActive && !isSelectionMode) 2.dp else 1.dp, if (isGreenActive && !isSelectionMode) PositiveGreen else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
-                elevation = CardDefaults.cardElevation(defaultElevation = if (isGreenActive && !isSelectionMode) 8.dp else 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(PositiveGreen.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingUp,
-                            contentDescription = "ما لي",
-                            tint = PositiveGreen,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "لي عند الناس",
-                            fontSize = 10.sp,
-                            color = if (isDark) Color(0xFFA09EB5) else Color(0xFF8C90A6),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = viewModel.formatCurrency(totalTheyOweMe),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PositiveGreen,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            val isRedActive = filterOption == com.example.ui.viewmodel.FilterOption.PAYABLES
-            val redScale by androidx.compose.animation.core.animateFloatAsState(targetValue = if (isRedActive && !isSelectionMode) 1.05f else 1.0f)
-
-            // Stats Card 2: علي للناس (Debts I owe to others)
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .scale(redScale)
-                    .clip(RoundedCornerShape(18.dp))
-                    .clickable(enabled = !isSelectionMode) {
-                        keyboardController?.hide()
-                        if (isRedActive) {
-                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.ALL
-                        } else {
-                            viewModel.filterOption.value = com.example.ui.viewmodel.FilterOption.PAYABLES
-                        }
-                    },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White
-                ),
-                border = BorderStroke(if (isRedActive && !isSelectionMode) 2.dp else 1.dp, if (isRedActive && !isSelectionMode) NegativeRed else (if (isDark) Color(0x1F6C5CE7) else Color(0xFFF1F2F6))),
-                elevation = CardDefaults.cardElevation(defaultElevation = if (isRedActive && !isSelectionMode) 8.dp else 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(NegativeRed.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingDown,
-                            contentDescription = "عليّ",
-                            tint = NegativeRed,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "علي للناس",
-                            fontSize = 10.sp,
-                            color = if (isDark) Color(0xFFA09EB5) else Color(0xFF8C90A6),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = viewModel.formatCurrency(totalIMeOwe),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NegativeRed,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-        }
-
-        // Vertical space optimization: reduce the spacer and use a zero-height offset compensator since the cards were offset by -16.dp.
-        Spacer(modifier = Modifier.height(0.dp))
+        // Horizontal spacing below the nested stats chips (reduce to 16.dp spacer to keep list high and tight)
+        Spacer(modifier = Modifier.height(16.dp))
 
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = 20.dp),
