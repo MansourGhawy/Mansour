@@ -8,6 +8,7 @@ import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas as ComposeCanvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,12 +28,19 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -64,34 +72,11 @@ fun ReportsScreen(
     val summary by viewModel.financialSummary.collectAsState()
     val transactions by viewModel.allTransactions.collectAsState()
 
-    // Business calculations
-    val totalTheyOweMe = summary.first
-    val totalIMeOwe = summary.second
-    val totalPayments = transactions.filter { it.type == "PAYMENT" }.sumOf { it.amount }
-    val totalDebts = transactions.filter { it.type == "DEBT" }.sumOf { it.amount }
+    // 1. Navigation Tab states: 
+    // Tab 0 = لوحة التحليلات والتحصيل (Dashboard & Analytics), Tab 1 = قوائم العملاء والمتابعة (Schedules & Actions)
+    var selectedMainTab by remember { mutableStateOf(0) }
 
-    // Active Debtors vs Creditors
-    val debtorsCount = customersList.count { it.netBalance > 0 }
-
-    // Category lists
-    val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
-    val currentTime = System.currentTimeMillis()
-    
-    val dormantDebtors = remember(customersList) {
-        customersList.filter { 
-            val lastTime = it.lastTransactionTime
-            it.netBalance > 0 && (lastTime == null || (currentTime - lastTime) > thirtyDaysMs)
-        }
-    }
-
-    val topDebtors = remember(customersList) {
-        customersList.filter { it.netBalance > 0 }
-    }
-
-    // Reports Sorting chips state
-    var reportsSortBy by remember { mutableStateOf(ReportsSort.HIGHEST_DEBT) }
-
-    // Multi-select and select mode states
+    // Multi-select and select mode states (For Lists tab)
     var selectedCustomerIds by remember { mutableStateOf(setOf<Int>()) }
     var isSelectMode by remember { mutableStateOf(false) }
 
@@ -101,6 +86,87 @@ fun ReportsScreen(
             isSelectMode = false
         }
     }
+
+    // Load and Save Local Goal Target to SharedPreferences
+    val prefs = remember(context) { context.getSharedPreferences("hesabat_habayeb_prefs", Context.MODE_PRIVATE) }
+    var collectionGoalTarget by remember { 
+        mutableStateOf(prefs.getFloat("collection_goal", 500000f).toDouble())
+    }
+    LaunchedEffect(collectionGoalTarget) {
+        prefs.edit().putFloat("collection_goal", collectionGoalTarget.toFloat()).apply()
+    }
+
+    // Business calculations
+    val totalTheyOweMe = summary.first
+    val totalIMeOwe = summary.second
+    val totalPayments = transactions.filter { it.type == "PAYMENT" }.sumOf { it.amount }
+    val totalDebts = transactions.filter { it.type == "DEBT" }.sumOf { it.amount }
+    val debtorsCount = customersList.count { it.netBalance > 0 }
+
+    // Time constant
+    val currentTime = System.currentTimeMillis()
+
+    // I. DEBT AGING CALCULATIONS (0-15, 16-30, 31-60, 61+ days)
+    val agingData = remember(customersList, transactions) {
+        var a0_15 = 0.0
+        var a16_30 = 0.0
+        var a31_60 = 0.0
+        var a61_plus = 0.0
+
+        customersList.filter { it.netBalance > 0 }.forEach { item ->
+            val lastTime = item.lastTransactionTime ?: item.customer.createdAt
+            val diffMs = currentTime - lastTime
+            val days = (diffMs / (24 * 60 * 60 * 1000L)).coerceAtLeast(0)
+            when {
+                days <= 15 -> a0_15 += item.netBalance
+                days in 16..30 -> a16_30 += item.netBalance
+                days in 31..60 -> a31_60 += item.netBalance
+                else -> a61_plus += item.netBalance
+            }
+        }
+        listOf(a0_15, a16_30, a31_60, a61_plus)
+    }
+    val totalAgingSum = remember(agingData) { agingData.sum() }
+
+    // II. SMART ACTIONS RECOMMENDATIONS (using requested score logic)
+    // Priority = (Debt_Amount * 0.6) + (Days_Since_Last_Payment * 0.4)
+    val smartRecommendations = remember(customersList, transactions) {
+        customersList.filter { it.netBalance > 0 }.map { item ->
+            // Find payments related to this customer
+            val customerPayments = transactions.filter { it.customerId == item.customer.id && it.type == "PAYMENT" }
+            val lastPaymentTime = customerPayments.maxOfOrNull { it.timestamp }
+            
+            val daysSinceLastPayment = if (lastPaymentTime != null) {
+                (currentTime - lastPaymentTime) / (24.0 * 60.0 * 60.0 * 1000.0)
+            } else {
+                val daysSinceReg = (currentTime - item.customer.createdAt) / (24.0 * 60.0 * 60.0 * 1000.0)
+                daysSinceReg.coerceAtLeast(30.0) // default 30 days penalty for no payments
+            }
+
+            // Normalizing values to prevent debt amount or days from dominating completely
+            // score = Net_Balance * 0.6 + Days_Since_Last_Payment * 0.4
+            val score = (item.netBalance * 0.6) + (daysSinceLastPayment * 0.4)
+            Triple(item, daysSinceLastPayment.toInt(), score)
+        }.sortedByDescending { it.third }.take(3)
+    }
+
+    // Dormant Debtors List (>30 days since last activity/payment)
+    val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
+    val dormantDebtors = remember(customersList) {
+        customersList.filter { 
+            val lastTime = it.lastTransactionTime
+            it.netBalance > 0 && (lastTime == null || (currentTime - lastTime) > thirtyDaysMs)
+        }
+    }
+
+    // All active debtors
+    val topDebtors = remember(customersList) {
+        customersList.filter { it.netBalance > 0 }
+    }
+
+    // Reports Sorting chips state
+    var reportsSortBy by remember { mutableStateOf(ReportsSort.HIGHEST_DEBT) }
+    var activeTabReports by remember { mutableStateOf(0) } // 0 = الأعلى مديونية, 1 = الخاملون (>30 يوم)
 
     // Share global report text format
     val textReport = remember(summary, topDebtors) {
@@ -121,10 +187,8 @@ fun ReportsScreen(
         "• عدد المدينين النشطين: $debtorsCount زبائن\n\n" +
         "⚠️ *أعلى زبائن عليهم متأخرات ديون:*\n" +
         (if (debtorsJoined.isNotBlank()) debtorsJoined else "  لا يوجد ديون مسجلة حالياً") +
-        "\n\n_تم التصدير تلقائياً من تطبيق حسابات حبايب السحابي المحلي_"
+        "\n\n_تم التصدير تلقائياً من تطبيق حسابات حبايب - محلي وآمن 100%_"
     }
-
-    var activeTabReports by remember { mutableStateOf(0) } // 0 = الأعلى ديوناً, 1 = الخاملون (>30 يوم)
 
     Column(
         modifier = Modifier
@@ -168,13 +232,9 @@ fun ReportsScreen(
 
                     Button(
                         onClick = {
-                            // Bulk delete Action
-                            selectedCustomerIds.forEach { customerId ->
-                                val item = customersList.firstOrNull { it.customer.id == customerId }
-                                if (item != null) {
-                                    viewModel.deleteCustomer(item.customer) {}
-                                }
-                            }
+                            viewModel.deleteMultipleCustomers(
+                                customersList.filter { selectedCustomerIds.contains(it.customer.id) }.map { it.customer }
+                            ) {}
                             selectedCustomerIds = emptySet()
                             isSelectMode = false
                         },
@@ -190,384 +250,851 @@ fun ReportsScreen(
             }
         } else {
             ScreenHeader(
-                title = "التقارير المالية والتحصيل",
-                subtitle = "إحصائيات تفصيلية لمراقبة حسابات ذمم زبائنك وتسهيل الاسترداد",
+                title = "التحليلات المالية والتحصيل",
+                subtitle = "لوحات إحصائية تفصيلية وجدول التحصيل على جهازك بدون انترنت",
                 isDark = isDark
             )
         }
 
-        val originalReportList = if (activeTabReports == 0) topDebtors else dormantDebtors
-        
-        val sortedReportList = remember(originalReportList, reportsSortBy) {
-            when (reportsSortBy) {
-                ReportsSort.NAME -> originalReportList.sortedBy { it.customer.name }
-                ReportsSort.HIGHEST_DEBT -> originalReportList.sortedByDescending { it.netBalance }
-                ReportsSort.DATE -> originalReportList.sortedByDescending { it.lastTransactionTime ?: 0L }
-            }
+        // Sub Navigation Tabs for Dashboard vs Receivables list
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 6.dp)
+                .background(
+                    if (isDark) Color(0xFF191829) else Color(0xFFEAEAFF),
+                    RoundedCornerShape(14.dp)
+                )
+                .padding(4.dp)
+        ) {
+            TabButton(
+                title = "لوحة التحليلات الذكية",
+                subtitle = "أعمار الديون والأهداف",
+                isSelected = selectedMainTab == 0,
+                isDark = isDark,
+                modifier = Modifier.weight(1f),
+                onClick = { selectedMainTab = 0 }
+            )
+            TabButton(
+                title = "جداول المتابعة والتحصيل",
+                subtitle = "قائمة الزبائن النشطين",
+                isSelected = selectedMainTab == 1,
+                isDark = isDark,
+                modifier = Modifier.weight(1f),
+                onClick = { selectedMainTab = 1 }
+            )
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            // Section 1: Financial Summary Cards (Receivables, Paid, Active Debtors)
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // 1. Receivables (الديون المستحقة) - Full Width main card
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isDark) Color(0xFF2D1E25) else Color(0xFFFFECEF)
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, if (isDark) Color(0x3DFF7675) else Color(0xFFF1D8D9))
+        // TAB Content Switcher
+        if (selectedMainTab == 0) {
+            // ==================== TAB 0: ANALYTICS DASHBOARD ====================
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                // Section 1: Financial Cards (Receivables, Paid, Active Debtors)
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        // 1. Receivables (الديون المستحقة) - Full Width main card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isDark) Color(0xFF2D1E25) else Color(0xFFFFECEF)
+                            ),
+                            shape = RoundedCornerShape(20.dp),
+                            border = BorderStroke(1.dp, if (isDark) Color(0x3DFF7675) else Color(0xFFF1D8D9))
                         ) {
-                            Column {
-                                Text(
-                                    text = "الديون المستحقة (المطالبات)",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF535260)
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = viewModel.formatCurrency(totalTheyOweMe),
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = NegativeRed
-                                )
-                            }
-                            Box(
+                            Row(
                                 modifier = Modifier
-                                    .size(46.dp)
-                                    .background(NegativeRed.copy(alpha = 0.15f), CircleShape),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.TrendingDown,
-                                    contentDescription = null,
-                                    tint = NegativeRed,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                                Column {
+                                    Text(
+                                        text = "الديون المستحقة لي (المطالبات المالية)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF535260)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = viewModel.formatCurrency(totalTheyOweMe),
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = NegativeRed
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .background(NegativeRed.copy(alpha = 0.15f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.TrendingDown,
+                                        contentDescription = null,
+                                        tint = NegativeRed,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Bottom Row: Paid Card & Active Debtors Card
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // 2. Paid Card (الدفعات المستردة)
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDark) Color(0xFF1E2F28) else Color(0xFFE8F8F0)
+                                ),
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.dp, if (isDark) Color(0x3D00B894) else Color(0xFFD0EFE0))
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Payments,
+                                        contentDescription = null,
+                                        tint = PositiveGreen,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "الدفعات المستردة",
+                                        fontSize = 11.sp,
+                                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF505C55)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = viewModel.formatCurrency(totalPayments),
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PositiveGreen
+                                    )
+                                }
+                            }
+
+                            // 3. Active Debtors (العملاء النشطين)
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isDark) Color(0xFF1E1D3F) else Color(0xFFEEEEFF)
+                                ),
+                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.dp, if (isDark) Color(0x3D6C5CE7) else Color(0xFFDCD6FD))
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Groups,
+                                        contentDescription = null,
+                                        tint = PrimaryPurple,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = "الزبائن المدينين",
+                                        fontSize = 11.sp,
+                                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF555268)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "$debtorsCount زبائن",
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PrimaryPurple
+                                    )
+                                }
                             }
                         }
                     }
+                }
 
-                    // Bottom Row: Paid Card & Active Debtors Card
+                // Section 2: PDF Document Export & Native offline Messaging Actions
+                item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // 2. Paid Card (الدفعات المستردة)
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDark) Color(0xFF1E2F28) else Color(0xFFE8F8F0)
-                            ),
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, if (isDark) Color(0x3D00B894) else Color(0xFFD0EFE0))
+                        Button(
+                            onClick = {
+                                generatePdfReport(context, totalTheyOweMe, totalPayments, summary.third, topDebtors.sortedByDescending { it.netBalance }.take(5))
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("export_pdf_button"),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Payments,
-                                    contentDescription = null,
-                                    tint = PositiveGreen,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
+                            Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = "PDF", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("تقرير PDF شامل للمراجعة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                try {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, textReport)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "مشاركة التقرير المالي:"))
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "لم نتمكن من إتمام المشاركة", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("share_whatsapp_button"),
+                            colors = ButtonDefaults.buttonColors(containerColor = PositiveGreen),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("مشاركة الأرقام سريعاً", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                // Section 3: Goal Tracking Panel (Flexible Offline Collections Target Goal)
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isDark) Color(0xFF1B1A2F) else Color.White
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, if (isDark) Color(0xFF29283F) else Color(0xFFECECFA))
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(imageVector = Icons.Default.Flag, contentDescription = null, tint = SecondaryTurquoise, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "مؤشر هدف التحصيل الشهري",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDark) Color.White else Color(0xFF2D3436)
+                                    )
+                                }
+                                
+                                // Incremental Goal Adjustments (Offline and Local state)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            if (collectionGoalTarget > 50000) {
+                                                collectionGoalTarget -= 50000
+                                                viewModel.triggerVibration()
+                                            }
+                                        },
+                                        modifier = Modifier.size(28.dp).background(if (isDark) Color(0xFF252342) else Color(0xFFF1F1FB), CircleShape)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Remove, contentDescription = "Decrease Goal", tint = PrimaryPurple, modifier = Modifier.size(14.dp))
+                                    }
+                                    
+                                    IconButton(
+                                        onClick = {
+                                            collectionGoalTarget += 50000
+                                            viewModel.triggerVibration()
+                                        },
+                                        modifier = Modifier.size(28.dp).background(if (isDark) Color(0xFF252342) else Color(0xFFF1F1FB), CircleShape)
+                                    ) {
+                                        Icon(imageVector = Icons.Default.Add, contentDescription = "Increase Goal", tint = PrimaryPurple, modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            val progressFraction = if (collectionGoalTarget > 0) {
+                                (totalPayments / collectionGoalTarget).coerceIn(0.0, 1.0)
+                            } else 0.0
+
+                            val progressPct = (progressFraction * 100).toInt()
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
-                                    text = "الدفعات المستلمة",
+                                    text = "المسترد الفعلي: ${viewModel.formatCurrency(totalPayments)}",
                                     fontSize = 11.sp,
-                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF505C55)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = viewModel.formatCurrency(totalPayments),
-                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = PositiveGreen
                                 )
-                            }
-                        }
-
-                        // 3. Active Debtors (العملاء النشطين)
-                        Card(
-                            modifier = Modifier.weight(1f),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDark) Color(0xFF1E1D3F) else Color(0xFFEEEEFF)
-                            ),
-                            shape = RoundedCornerShape(18.dp),
-                            border = BorderStroke(1.dp, if (isDark) Color(0x3D6C5CE7) else Color(0xFFDCD6FD))
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Groups,
-                                    contentDescription = null,
-                                    tint = PrimaryPurple,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(
-                                    text = "الزبائن النشطين",
+                                    text = "الهدف: ${viewModel.formatCurrency(collectionGoalTarget)} ($progressPct%)",
                                     fontSize = 11.sp,
-                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF555268)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "$debtorsCount زبون مدين",
-                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryPurple
                                 )
                             }
-                        }
-                    }
-                }
-            }
 
-            // General PDF exports & messaging
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            generatePdfReport(context, totalTheyOweMe, totalPayments, summary.third, topDebtors.sortedByDescending { it.netBalance }.take(5))
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp)
-                            .testTag("export_pdf_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = "PDF", modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("تقرير PDF شامل", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                    Button(
-                        onClick = {
-                            try {
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, textReport)
-                                }
-                                context.startActivity(Intent.createChooser(shareIntent, "مشاركة التقرير المالي:"))
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "لم نتمكن من إتمام المشاركة", Toast.LENGTH_SHORT).show()
+                            // Custom Visual progress track
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (isDark) Color(0xFF25243C) else Color(0xFFEAEAFF))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(progressFraction.toFloat())
+                                        .background(
+                                            Brush.horizontalGradient(
+                                                colors = listOf(PositiveGreen, SecondaryTurquoise)
+                                            )
+                                        )
+                                )
                             }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(46.dp)
-                            .testTag("share_whatsapp_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = PositiveGreen),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("مشاركة الأرقام", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
 
-            // Tabs for lists selection
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            if (isDark) Color(0xFF1E1D2F) else Color(0x1F6C5CE7),
-                            RoundedCornerShape(14.dp)
-                        )
-                        .padding(4.dp)
-                ) {
-                    // Tab 0: Top Debtors
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (activeTabReports == 0) PrimaryPurple else Color.Transparent)
-                            .clickable { activeTabReports = 0 }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "الأعلى مديونية (${topDebtors.size})",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (activeTabReports == 0) Color.White else (if (isDark) Color.White else Color.Black)
-                        )
-                    }
+                            Spacer(modifier = Modifier.height(10.dp))
 
-                    // Tab 1: Dormant Debtors
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (activeTabReports == 1) PrimaryPurple else Color.Transparent)
-                            .clickable { activeTabReports = 1 }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "الخاملون >30 يوم (${dormantDebtors.size})",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (activeTabReports == 1) Color.White else (if (isDark) Color.White else Color.Black)
-                        )
-                    }
-                }
-            }
-
-            // Sorting chips for the active reports view lists
-            item {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "ترتيب القائمة المالي حسب:",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val activeChipBg = PrimaryPurple
-                        val activeChipText = Color.White
-                        val inactiveChipBg = if (isDark) Color(0xFF1E1D2F) else Color(0xFFF1F2F6)
-                        val inactiveChipText = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
-
-                        // Chip 1: الاسم
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (reportsSortBy == ReportsSort.NAME) activeChipBg else inactiveChipBg)
-                                .clickable { reportsSortBy = ReportsSort.NAME }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("الاسم", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (reportsSortBy == ReportsSort.NAME) activeChipText else inactiveChipText)
-                        }
-
-                        // Chip 2: الأعلى ديناً
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (reportsSortBy == ReportsSort.HIGHEST_DEBT) activeChipBg else inactiveChipBg)
-                                .clickable { reportsSortBy = ReportsSort.HIGHEST_DEBT }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("الأعلى ديناً", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (reportsSortBy == ReportsSort.HIGHEST_DEBT) activeChipText else inactiveChipText)
-                        }
-
-                        // Chip 3: التاريخ
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (reportsSortBy == ReportsSort.DATE) activeChipBg else inactiveChipBg)
-                                .clickable { reportsSortBy = ReportsSort.DATE }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("التاريخ", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (reportsSortBy == ReportsSort.DATE) activeChipText else inactiveChipText)
-                        }
-                    }
-                }
-            }
-
-            if (sortedReportList.isEmpty()) {
-                item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(36.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                            val remaining = (collectionGoalTarget - totalPayments).coerceAtLeast(0.0)
                             Text(
-                                text = if (activeTabReports == 0) "لا يوجد زبائن لديهم ديون متبقية." else "رائع! لا يوجد عملاء تراكمت ديونهم دون سداد مؤخراً.",
-                                fontSize = 13.sp,
-                                color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
-                                textAlign = TextAlign.Center
+                                text = if (remaining > 0) "متبقى لتحقيق خطة الاسترداد المالي لهذا الشهر: ${viewModel.formatCurrency(remaining)}" else "تهانينا! لقد تجاوزت هدف التحصيل والاسترداد بنجاح! 🎉",
+                                fontSize = 11.sp,
+                                color = if (remaining > 0) Color.Gray else PositiveGreen,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
-            } else {
-                items(sortedReportList, key = { it.customer.id }) { debtor ->
-                    val isSelected = selectedCustomerIds.contains(debtor.customer.id)
-                    
-                    Row(
+
+                // Section 4: Local Client-Side Canvas Charting of Debt Aging
+                item {
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1B1A2F) else Color.White),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, if (isDark) Color(0xFF29283F) else Color(0xFFECECFA))
                     ) {
-                        // Visual check indicator when in select mode
-                        if (isSelectMode) {
-                            IconButton(onClick = {
-                                selectedCustomerIds = if (isSelected) {
-                                    selectedCustomerIds - debtor.customer.id
-                                } else {
-                                    selectedCustomerIds + debtor.customer.id
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
-                                    contentDescription = "Select",
-                                    tint = if (isSelected) NegativeRed else Color.Gray,
-                                    modifier = Modifier.size(24.dp)
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = Icons.Default.TrendingDown, contentDescription = null, tint = NegativeRed, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "تحليل أعمار الديون المعلقة (Aged Receivables)",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.White else Color(0xFF2D3436)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "تقسيم مستحقاتك المالية حسب زمن التأخير من تاريخ آخر عملية لكل عميل",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            // Canvas multi-segmented graph
+                            val colors = listOf(
+                                Color(0xFF2ECC71), // 0-15
+                                Color(0xFFF1C40F), // 16-30
+                                Color(0xFFE67E22), // 31-60
+                                Color(0xFFE74C3C)  // 61+
+                            )
+
+                            ComposeCanvas(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(18.dp)
+                                    .clip(RoundedCornerShape(9.dp))
+                            ) {
+                                if (totalAgingSum <= 0.0) {
+                                    drawRect(color = Color(0xFFE2E3ED))
+                                } else {
+                                    var currentX = 0f
+                                    val parentWidth = size.width
+                                    for (i in agingData.indices) {
+                                        val amount = agingData[i]
+                                        if (amount > 0) {
+                                            val fraction = (amount / totalAgingSum).toFloat()
+                                            val rectWidth = fraction * parentWidth
+                                            drawRect(
+                                                color = colors[i],
+                                                topLeft = Offset(currentX, 0f),
+                                                size = androidx.compose.ui.geometry.Size(rectWidth, size.height)
+                                            )
+                                            currentX += rectWidth
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Grid Legend indicators of the values
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                val labels = listOf("جديدة (0-15 يوم)", "متوسطة (16-30 يوم)", "متأخرة (31-60 يوم)", "حرجة (أكثر من 60 يوم)")
+                                
+                                labels.forEachIndexed { i, labelText ->
+                                    val valAmount = agingData[i]
+                                    val pct = if (totalAgingSum > 0.0) ((valAmount / totalAgingSum) * 100).toInt() else 0
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(modifier = Modifier.size(10.dp).background(colors[i], CircleShape))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(labelText, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (isDark) Color.White else Color.Black)
+                                        }
+                                        Text(
+                                            text = "${viewModel.formatCurrency(valAmount)} ($pct%)",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors[i]
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 5: Smart Offline Collection Recommendations (Priority sorting)
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1B1A2F) else Color.White),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, if (isDark) Color(0xFF29283F) else Color(0xFFECECFA))
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = Icons.Default.Lightbulb, contentDescription = null, tint = SecondaryTurquoise, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "توصيات التحصيل الذكية لسرعة الاسترداد",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.White else Color(0xFF2D3436)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "تفضيل العملاء بموجب خوارزمية ذكية تحسب قيمة ديونهم مع أيام التأخير في السداد",
+                                fontSize = 11.sp,
+                                color = Color.Gray
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            if (smartRecommendations.isEmpty()) {
+                                Text(
+                                    text = "لا توجد توصيات متاحة، ليس لديك زبائن مدينين في الوقت الحالي.",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                                )
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    smartRecommendations.forEachIndexed { idx, (item, daysSince, score) ->
+                                        val urgencyColor = when(idx) {
+                                            0 -> NegativeRed
+                                            1 -> Color(0xFFE67E22)
+                                            else -> Color(0xFFF1C40F)
+                                        }
+                                        val urgencyText = when(idx) {
+                                            0 -> "أولوية قصوى واهتزاز عالي"
+                                            1 -> "أولوية مرتفعة للمتابعة"
+                                            else -> "متابعة دورية"
+                                        }
+
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(if (isDark) Color(0xFF24233D) else Color(0xFFF7F8FC), RoundedCornerShape(12.dp))
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        text = item.customer.name,
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = if (isDark) Color.White else Color(0xFF2D3436)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = urgencyText,
+                                                        fontSize = 9.sp,
+                                                        color = urgencyColor,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier
+                                                            .background(urgencyColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Text(
+                                                    text = "المبلغ المطلوب: ${viewModel.formatCurrency(item.netBalance)} • آخر سداد منذ: $daysSince يوم",
+                                                    fontSize = 10.sp,
+                                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
+                                                )
+                                            }
+
+                                            // WhatsApp Action reminder
+                                            IconButton(
+                                                onClick = {
+                                                    try {
+                                                        val formatBal = viewModel.formatCurrency(item.netBalance)
+                                                        val waMsg = "السلام عليكم ورحمة الله.. تذكير لطيف ببيان الحساب الحالي لدينا، حيث يبلغ الرصيد المستحق كالتالي: $formatBal. نسعد ونتشرف بخدمتكم دائماً."
+                                                        val formattedPhone = item.customer.phone.replace("+", "").replace(" ", "")
+                                                        val intent = if (item.customer.phone.isNotBlank()) {
+                                                            Intent(Intent.ACTION_VIEW).apply {
+                                                                data = Uri.parse("https://api.whatsapp.com/send?phone=$formattedPhone&text=${Uri.encode(waMsg)}")
+                                                            }
+                                                        } else {
+                                                            Intent(Intent.ACTION_SEND).apply {
+                                                                type = "text/plain"
+                                                                putExtra(Intent.EXTRA_TEXT, waMsg)
+                                                            }
+                                                        }
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {
+                                                        Toast.makeText(context, "لم نتمكن من فتح تطبيق المشاركة", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .background(PositiveGreen.copy(alpha = 0.12f), CircleShape)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Share, 
+                                                    contentDescription = "Share reminding text", 
+                                                    tint = PositiveGreen, 
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section 6: Local-Only and Privacy Notice Card
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF2C161D) else Color(0xFFFEF6F0)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, if (isDark) Color(0xFF4C2A34) else Color(0xFFF3DFD5))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "Security Status Offline",
+                                tint = AccentPink,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "حكاية الخصوصية والأمان المحلي 100% 🔒",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isDark) Color.White else Color(0xFF8B3A2C)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "تتم جميع العمليات والمعالجات الحسابية لبيانات ديونك وإحصائياتها بالكامل وبشكل فوري محلياً داخل جهازك دون إرسالها لأي خوادم سحابية. حتى عند تفعيل ميزة المزامنة لجوجل درايف الاحتياطية سحابياً، تظل نسخة هاتفك الحالي ومستندها هي 'مصدر الحقيقة المالي المطلق والكامل' منعاً لأي تعارض.",
+                                    fontSize = 10.sp,
+                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF5D544F),
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // ==================== TAB 1: RECEIVABLES LIST & TABLES ====================
+            val originalReportList = if (activeTabReports == 0) topDebtors else dormantDebtors
+            
+            val sortedReportList = remember(originalReportList, reportsSortBy) {
+                when (reportsSortBy) {
+                    ReportsSort.NAME -> originalReportList.sortedBy { it.customer.name }
+                    ReportsSort.HIGHEST_DEBT -> originalReportList.sortedByDescending { it.netBalance }
+                    ReportsSort.DATE -> originalReportList.sortedByDescending { it.lastTransactionTime ?: 0L }
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
+            ) {
+                // Section 1: Debtors list select mode tabs
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .background(
+                                if (isDark) Color(0xFF1E1D2F) else Color(0x1F6C5CE7),
+                                RoundedCornerShape(14.dp)
+                            )
+                            .padding(4.dp)
+                    ) {
+                        // Tab 0: Top Debtors
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (activeTabReports == 0) PrimaryPurple else Color.Transparent)
+                                .clickable { activeTabReports = 0 }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "الأعلى مديونية (${topDebtors.size})",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activeTabReports == 0) Color.White else (if (isDark) Color.White else Color.Black)
+                            )
                         }
 
-                        Box(modifier = Modifier.weight(1f)) {
-                            TopDebtorRow(
-                                item = debtor,
-                                viewModel = viewModel,
-                                isDark = isDark,
-                                isSelected = isSelected,
-                                isSelectMode = isSelectMode,
-                                onSelectToggle = {
-                                    if (!isSelectMode) {
-                                        isSelectMode = true
-                                    }
+                        // Tab 1: Dormant Debtors
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (activeTabReports == 1) PrimaryPurple else Color.Transparent)
+                                .clickable { activeTabReports = 1 }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "الخاملون >30 يوم (${dormantDebtors.size})",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (activeTabReports == 1) Color.White else (if (isDark) Color.White else Color.Black)
+                            )
+                        }
+                    }
+                }
+
+                // Section 2: Firing option chips
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "ترتيب القائمة المالي حسب والفرز:",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val activeChipBg = PrimaryPurple
+                            val activeChipText = Color.White
+                            val inactiveChipBg = if (isDark) Color(0xFF1E1D2F) else Color(0xFFF1F2F6)
+                            val inactiveChipText = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A)
+
+                            // Chip 1: الاسم
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (reportsSortBy == ReportsSort.NAME) activeChipBg else inactiveChipBg)
+                                    .clickable { reportsSortBy = ReportsSort.NAME }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("الاسم", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (reportsSortBy == ReportsSort.NAME) activeChipText else inactiveChipText)
+                            }
+
+                            // Chip 2: الأعلى ديناً
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (reportsSortBy == ReportsSort.HIGHEST_DEBT) activeChipBg else inactiveChipBg)
+                                    .clickable { reportsSortBy = ReportsSort.HIGHEST_DEBT }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("الأعلى ديناً", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (reportsSortBy == ReportsSort.HIGHEST_DEBT) activeChipText else inactiveChipText)
+                            }
+
+                            // Chip 3: التاريخ
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (reportsSortBy == ReportsSort.DATE) activeChipBg else inactiveChipBg)
+                                    .clickable { reportsSortBy = ReportsSort.DATE }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("التاريخ", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (reportsSortBy == ReportsSort.DATE) activeChipText else inactiveChipText)
+                            }
+                        }
+                    }
+                }
+
+                // Section 3: List content
+                if (sortedReportList.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 12.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (isDark) Color(0xFF1E1D2F) else Color.White),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(36.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (activeTabReports == 0) "لا يوجد زبائن لديهم ديون متبقية حالياً." else "رائع! لا يوجد عملاء تراكمت ديونهم دون سداد مؤخراً.",
+                                    fontSize = 13.sp,
+                                    color = if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(sortedReportList, key = { it.customer.id }) { debtor ->
+                        val isSelected = selectedCustomerIds.contains(debtor.customer.id)
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Visual check indicator when in select mode
+                            if (isSelectMode) {
+                                IconButton(onClick = {
                                     selectedCustomerIds = if (isSelected) {
                                         selectedCustomerIds - debtor.customer.id
                                     } else {
                                         selectedCustomerIds + debtor.customer.id
                                     }
+                                }) {
+                                    Icon(
+                                        imageVector = if (isSelected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                                        contentDescription = "Select",
+                                        tint = if (isSelected) NegativeRed else Color.Gray,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                            )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+
+                            Box(modifier = Modifier.weight(1f)) {
+                                TopDebtorRow(
+                                    item = debtor,
+                                    viewModel = viewModel,
+                                    isDark = isDark,
+                                    isSelected = isSelected,
+                                    isSelectMode = isSelectMode,
+                                    onSelectToggle = {
+                                        if (!isSelectMode) {
+                                            isSelectMode = true
+                                        }
+                                        selectedCustomerIds = if (isSelected) {
+                                            selectedCustomerIds - debtor.customer.id
+                                        } else {
+                                            selectedCustomerIds + debtor.customer.id
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun TabButton(
+    title: String,
+    subtitle: String,
+    isSelected: Boolean,
+    isDark: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val containerBg = if (isSelected) {
+        PrimaryPurple
+    } else {
+        Color.Transparent
+    }
+
+    val titleColor = if (isSelected) {
+        Color.White
+    } else {
+        if (isDark) Color.White else Color.Black
+    }
+
+    val subtitleColor = if (isSelected) {
+        Color.White.copy(alpha = 0.7f)
+    } else {
+        Color.Gray
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(11.dp))
+            .background(containerBg)
+            .clickable { onClick() }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = titleColor, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(subtitle, fontSize = 9.sp, color = subtitleColor, textAlign = TextAlign.Center)
         }
     }
 }
@@ -686,7 +1213,7 @@ fun TopDebtorRow(
                                 }
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                Toast.makeText(context, "لم נتمكن من فتح تطبيق المشاركة", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "لم نتمكن من فتح تطبيق المشاركة", Toast.LENGTH_SHORT).show()
                             }
                         },
                         colors = IconButtonDefaults.iconButtonColors(
