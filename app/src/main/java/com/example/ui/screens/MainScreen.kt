@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -69,6 +70,20 @@ fun MainScreen(
     val selectedCustomers = remember { mutableStateListOf<CustomerWithBalance>() }
     val isSelectionMode = selectedCustomers.isNotEmpty()
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Sequential Back Press Handler
+    BackHandler(enabled = isSelectionMode || isSearching) {
+        if (isSelectionMode) {
+            // Step 1: Check Selection Mode (Highest Priority)
+            selectedCustomers.clear()
+        } else if (isSearching) {
+            // Step 2: Check Search View State (Second Priority)
+            isSearching = false
+            viewModel.searchQuery.value = ""
+            keyboardController?.hide()
+            focusManager.clearFocus()
+        }
+    }
 
     if (showDeleteDialog) {
         AlertDialog(
