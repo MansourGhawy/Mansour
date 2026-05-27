@@ -1,63 +1,93 @@
 package com.example.data.local
 
-import androidx.room.*
+import android.content.ContentValues
+import android.database.sqlite.SQLiteDatabase
 import com.example.data.model.Customer
 import com.example.data.model.Transaction
 import kotlinx.coroutines.flow.Flow
 
-@Dao
 interface CustomerDao {
-    @Query("SELECT * FROM customers ORDER BY name ASC")
-    fun getAllCustomers(): Flow<List<Customer>>
-
-    @Query("SELECT * FROM customers WHERE id = :id LIMIT 1")
-    suspend fun getCustomerById(id: Int): Customer?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCustomer(customer: Customer): Long
-
-    @Update
-    suspend fun updateCustomer(customer: Customer)
-
-    @Delete
     suspend fun deleteCustomer(customer: Customer)
-
-    @Query("DELETE FROM transactions WHERE customerId = :customerId")
-    suspend fun deleteTransactionsByCustomer(customerId: Int)
-
-    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
-    fun getAllTransactions(): Flow<List<Transaction>>
-
-    @Query("SELECT * FROM transactions WHERE customerId = :customerId ORDER BY timestamp DESC")
-    fun getTransactionsForCustomer(customerId: Int): Flow<List<Transaction>>
-
-    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
-    suspend fun getTransactionById(id: Int): Transaction?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun getAllCustomers(): Flow<List<Customer>>
     suspend fun insertTransaction(transaction: Transaction): Long
-
-    @Update
-    suspend fun updateTransaction(transaction: Transaction)
-
-    @Delete
     suspend fun deleteTransaction(transaction: Transaction)
+    fun getAllTransactions(): Flow<List<Transaction>>
+    fun getTransactionsByCustomer(customerId: Long): Flow<List<Transaction>>
+    suspend fun deleteTransactionsByCustomer(customerId: Long)
+}
 
-    @androidx.room.Transaction
-    suspend fun deleteCustomerWithTransactions(customer: Customer) {
-        deleteTransactionsByCustomer(customer.id)
-        deleteCustomer(customer)
+class SQLiteCustomerDao(private val helper: SQLiteDatabaseHelper) : CustomerDao {
+
+    override suspend fun insertCustomer(customer: Customer): Long {
+        val db = helper.writableDatabase
+        val values = ContentValues().apply {
+            if (customer.id > 0) {
+                put("id", customer.id)
+            }
+            put("name", customer.name)
+            put("phone", customer.phone)
+            put("createdAt", customer.createdAt)
+        }
+        val id = db.insertWithOnConflict(
+            "customers",
+            null,
+            values,
+            SQLiteDatabase.CONFLICT_REPLACE
+        )
+        helper.triggerUpdate()
+        return id
     }
 
-    @Query("DELETE FROM customers")
-    suspend fun clearCustomers()
+    override suspend fun deleteCustomer(customer: Customer) {
+        val db = helper.writableDatabase
+        db.delete("customers", "id = ?", arrayOf(customer.id.toString()))
+        helper.triggerUpdate()
+    }
 
-    @Query("DELETE FROM transactions")
-    suspend fun clearTransactions()
+    override fun getAllCustomers(): Flow<List<Customer>> {
+        return helper.getCustomersFlow()
+    }
 
-    @androidx.room.Transaction
-    suspend fun clearAllData() {
-        clearTransactions()
-        clearCustomers()
+    override suspend fun insertTransaction(transaction: Transaction): Long {
+        val db = helper.writableDatabase
+        val values = ContentValues().apply {
+            if (transaction.id > 0) {
+                put("id", transaction.id)
+            }
+            put("customerId", transaction.customerId)
+            put("amount", transaction.amount)
+            put("type", transaction.type)
+            put("timestamp", transaction.timestamp)
+            put("note", transaction.note)
+        }
+        val id = db.insertWithOnConflict(
+            "transactions",
+            null,
+            values,
+            SQLiteDatabase.CONFLICT_REPLACE
+        )
+        helper.triggerUpdate()
+        return id
+    }
+
+    override suspend fun deleteTransaction(transaction: Transaction) {
+        val db = helper.writableDatabase
+        db.delete("transactions", "id = ?", arrayOf(transaction.id.toString()))
+        helper.triggerUpdate()
+    }
+
+    override fun getAllTransactions(): Flow<List<Transaction>> {
+        return helper.getTransactionsFlow()
+    }
+
+    override fun getTransactionsByCustomer(customerId: Long): Flow<List<Transaction>> {
+        return helper.getTransactionsByCustomerFlow(customerId)
+    }
+
+    override suspend fun deleteTransactionsByCustomer(customerId: Long) {
+        val db = helper.writableDatabase
+        db.delete("transactions", "customerId = ?", arrayOf(customerId.toString()))
+        helper.triggerUpdate()
     }
 }

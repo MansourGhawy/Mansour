@@ -1,18 +1,13 @@
 package com.example.ui.screens
 
+import android.content.Context
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backspace
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,277 +15,162 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.example.ui.theme.DarkBg
+import com.example.ui.theme.PrimaryPurple
+import com.example.ui.theme.NegativeRed
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LockScreen(
-    correctPin: String,
-    isDark: Boolean,
-    onUnlockSuccess: () -> Unit
+    onUnlockDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val sharedPref = remember { context.getSharedPreferences("hesabat_prefs", Context.MODE_PRIVATE) }
+    val savedPasscode = remember { sharedPref.getString("passcode", "") ?: "" }
 
-    // Intercept hardware OS back buttons specifically while lock screen is active
-    BackHandler(enabled = true) {
-        // Do nothing to prevent exiting, no toasts avoiding overload on InputDispatcher
-    }
+    var enteredDigits by remember { mutableStateOf("") }
 
-    var inputPin by remember { mutableStateOf("") }
-    var isPinError by remember { mutableStateOf(false) }
-    var isBiometricScanning by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    // Shake animation state for incorrect PIN
-    val offsetX = remember { Animatable(0f) }
-
-    fun handleDigitPress(digit: String) {
-        if (inputPin.length < 4) {
-            isPinError = false
-            inputPin += digit
-            if (inputPin.length == 4) {
-                if (inputPin == correctPin) {
-                    onUnlockSuccess()
-                } else {
-                    // Start error shake
-                    scope.launch {
-                        isPinError = true
-                        Toast.makeText(context, "رمز الأمان خاطئ، يرجى المحاولة مجدداً", Toast.LENGTH_SHORT).show()
-                        inputPin = ""
-                        // Shake routine
-                        repeat(3) {
-                            offsetX.animateTo(20f, spring(dampingRatio = Spring.DampingRatioHighBouncy))
-                            offsetX.animateTo(-20f, spring(dampingRatio = Spring.DampingRatioHighBouncy))
-                        }
-                        offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioHighBouncy))
-                    }
-                }
+    LaunchedEffect(enteredDigits) {
+        if (enteredDigits.length == 4) {
+            if (enteredDigits == savedPasscode) {
+                onUnlockDismiss()
+            } else {
+                Toast.makeText(context, "رمز المرور خاطئ! الرجاء إدخال الرمز الصحيح", Toast.LENGTH_SHORT).show()
+                enteredDigits = ""
             }
-        }
-    }
-
-    fun handleDeletePress() {
-        if (inputPin.isNotEmpty()) {
-            inputPin = inputPin.dropLast(1)
-            isPinError = false
-        }
-    }
-
-    fun handleBiometricPress() {
-        if (isBiometricScanning) return
-        scope.launch {
-            isBiometricScanning = true
-            delay(1200) // Simulated scan progress animation
-            isBiometricScanning = false
-            Toast.makeText(context, "تم تأكيد الهوية بالبصمة بنجاح!", Toast.LENGTH_SHORT).show()
-            onUnlockSuccess()
         }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (isDark) DarkBg else LightBg)
+            .background(DarkBg),
+        contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(vertical = 48.dp, horizontal = 32.dp)
         ) {
-            // Spacer for vertical balance
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Upper Panel: Lock icon & Titles
+            // Header block
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.offset(x = offsetX.value.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .background(
-                            if (isPinError) NegativeRed.copy(alpha = 0.15f) else PrimaryPurple.copy(alpha = 0.15f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isPinError) Icons.Default.Lock else Icons.Default.Lock,
-                        contentDescription = "Lock Logo",
-                        tint = if (isPinError) NegativeRed else PrimaryPurple,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-
                 Text(
-                    text = "رمز الأمان مطلوب",
-                    fontSize = 22.sp,
+                    text = "حسابات حبايب آمنة",
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isDark) Color.White else Color(0xFF2D3436)
+                    color = Color.White
                 )
-
                 Text(
-                    text = if (isPinError) "الرمز المدخل غير صحيح" else "الرجاء إدخال الرمز المكون من 4 أرقام لفتح التطبيق",
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    color = if (isPinError) NegativeRed else (if (isDark) Color(0xFFA09EB5) else Color(0xFF747D8C)),
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    text = "أدخل رمز الدخول (البين) لفتح الخزانة والمتابعة",
+                    fontSize = 12.sp,
+                    color = Color.Gray
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Dots representing passcode state
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    for (i in 0 until 4) {
-                        val isFilled = i < inputPin.length
-                        val color = when {
-                            isPinError -> NegativeRed
-                            isFilled -> PrimaryPurple
-                            else -> if (isDark) Color(0xFF2F2B4A) else Color(0xFFDCDDE1)
-                        }
+                // Passcode entered state indicator dots
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    listOf(1, 2, 3, 4).forEach { index ->
+                        val filled = enteredDigits.length >= index
                         Box(
                             modifier = Modifier
-                                .size(18.dp)
+                                .size(16.dp)
                                 .clip(CircleShape)
-                                .background(color)
+                                .background(if (filled) PrimaryPurple else Color(0xFF2E2C4D))
                         )
                     }
                 }
             }
 
-            // Fingerprint scanner visual when biometric scanning is active
-            if (isBiometricScanning) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        color = SecondaryTurquoise,
-                        modifier = Modifier.size(54.dp),
-                        strokeWidth = 4.dp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        "جاري التحقق من بصمة الإصبع...",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SecondaryTurquoise
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
-            // Lower Panel: 3x4 Numerical Grid keyboard
+            // Simple custom numeric keypad
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Keypad Rows
-                val keys = listOf(
+                // Keypad rows
+                listOf(
                     listOf("1", "2", "3"),
                     listOf("4", "5", "6"),
                     listOf("7", "8", "9")
-                )
-
-                for (row in keys) {
+                ).forEach { gridRow ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(0.85f),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        for (key in row) {
+                        gridRow.forEach { char ->
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .aspectRatio(1.3f)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isDark) Color(0xFF1E1D2F) else Color(0xFFEFEFFB))
-                                    .clickable { handleDigitPress(key) },
+                                    .aspectRatio(1.5f)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFF1E1D2F))
+                                    .clickable {
+                                        if (enteredDigits.length < 4) enteredDigits += char
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = key,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isDark) Color.White else Color(0xFF2D3436)
-                                )
+                                Text(char, fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)
                             }
                         }
                     }
                 }
 
-                // Last Row: Biometric Shortcut | 0 | Backspace delete
+                // Call row clear/0/back
                 Row(
-                    modifier = Modifier.fillMaxWidth(0.85f),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Biometric/Fingerprint Trigger
+                    // Reset inputs
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(1.3f)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isDark) Color(0xFF251A32) else Color(0xFFFFEBEE))
-                            .clickable { handleBiometricPress() },
+                            .aspectRatio(1.5f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(NegativeRed.copy(alpha = 0.15f))
+                            .clickable { enteredDigits = "" },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Fingerprint,
-                            contentDescription = "بصمة الإصبع",
-                            tint = AccentPink,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        Text("C", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NegativeRed)
                     }
 
-                    // Key 0
+                    // 0 key
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(1.3f)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isDark) Color(0xFF1E1D2F) else Color(0xFFEFEFFB))
-                            .clickable { handleDigitPress("0") },
+                            .aspectRatio(1.5f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF1E1D2F))
+                            .clickable {
+                                if (enteredDigits.length < 4) enteredDigits += "0"
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "0",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDark) Color.White else Color(0xFF2D3436)
-                        )
+                        Text("0", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)
                     }
 
-                    // Key Backspace
+                    // Backspace code
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .aspectRatio(1.3f)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isDark) Color(0xFF252136) else Color(0xFFF1F2F6))
-                            .clickable { handleDeletePress() },
+                            .aspectRatio(1.5f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF1E1D2F))
+                            .clickable {
+                                if (enteredDigits.isNotEmpty()) {
+                                    enteredDigits = enteredDigits.dropLast(1)
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Backspace,
-                            contentDescription = "حذف ومسح",
-                            tint = if (isDark) Color(0xFFA09EB5) else Color(0xFF5A527A),
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Text("⌫", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

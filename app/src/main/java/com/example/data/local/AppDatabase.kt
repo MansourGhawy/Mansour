@@ -1,14 +1,8 @@
 package com.example.data.local
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import com.example.data.model.Customer
-import com.example.data.model.Transaction
 
-@Database(entities = [Customer::class, Transaction::class], version = 1, exportSchema = false)
-abstract class AppDatabase : RoomDatabase() {
+abstract class AppDatabase {
     abstract fun customerDao(): CustomerDao
 
     companion object {
@@ -17,13 +11,14 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "hesabat_habayeb_db"
-                )
-                .fallbackToDestructiveMigration()
-                .build()
+                val helper = SQLiteDatabaseHelper(context.applicationContext)
+                val instance = object : AppDatabase() {
+                    override fun customerDao(): CustomerDao {
+                        return SQLiteCustomerDao(helper)
+                    }
+                }
+                // Trigger initial query to warm cache trigger flows
+                helper.triggerUpdate()
                 INSTANCE = instance
                 instance
             }

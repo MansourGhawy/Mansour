@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -32,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.example.ui.theme.*
 import com.example.ui.viewmodel.CustomerViewModel
 import com.example.ui.viewmodel.CustomerWithBalance
 import java.io.File
@@ -51,8 +51,6 @@ fun ReportsScreen(
 
     val curTime = System.currentTimeMillis()
 
-    // 1. Calculate Today's Inflow (Payments) and Outflow (Debts)
-    // Daily Flow calculation queries transactions where date == today
     val todayCalendar = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
@@ -71,7 +69,6 @@ fun ReportsScreen(
             .sumOf { it.amount }
     }
 
-    // 2. Urgent Collection Agenda: Customers inactive for > 30 days with netBalance > 0
     val thirtyDaysAgoMs = curTime - 30L * 24 * 60 * 60 * 1000L
     val urgentCustomers = remember(customersList) {
         customersList.filter { debtor ->
@@ -83,7 +80,6 @@ fun ReportsScreen(
     val totalTheyOweMe = summary.first
     val totalPayments = transactions.filter { it.type == "PAYMENT" }.sumOf { it.amount }
 
-    // Helpers for formatting
     fun formatCustomCurrency(amount: Double): String {
         val formatter = java.text.NumberFormat.getNumberInstance(Locale.US).apply {
             minimumFractionDigits = 0
@@ -104,8 +100,6 @@ fun ReportsScreen(
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // A. Header (Strictly concise and clean)
-        // Redundant filler elements are purged as mandated.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -126,15 +120,13 @@ fun ReportsScreen(
             )
         }
 
-        // B. Scrollable Content
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 24.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Section 1: Daily Cash Flow (صندوق اليوم)
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -149,7 +141,6 @@ fun ReportsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Card 1: Inflow (محصلات اليوم)
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -172,16 +163,14 @@ fun ReportsScreen(
                                     fontWeight = FontWeight.Medium,
                                     color = if (isDark) Color(0xFFB0F2C2) else Color(0xFF27AE60)
                                 )
-                                Text(
+                                AutoSizeText(
                                     text = formatCustomCurrency(todayPayments),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    baseFontSize = 18f,
                                     color = PositiveGreen
                                 )
                             }
                         }
 
-                        // Card 2: Outflow (ديون اليوم)
                         Card(
                             modifier = Modifier
                                 .weight(1f)
@@ -204,10 +193,9 @@ fun ReportsScreen(
                                     fontWeight = FontWeight.Medium,
                                     color = if (isDark) Color(0xFFFFC0BD) else Color(0xFFC0392B)
                                 )
-                                Text(
+                                AutoSizeText(
                                     text = formatCustomCurrency(todayDebts),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    baseFontSize = 18f,
                                     color = NegativeRed
                                 )
                             }
@@ -216,7 +204,6 @@ fun ReportsScreen(
                 }
             }
 
-            // Section 2: Urgent Collection Agenda (أجندة التحصيل)
             item {
                 Text(
                     text = "أجندة التحصيل (${urgentCustomers.size})",
@@ -287,10 +274,9 @@ fun ReportsScreen(
                                     color = Color.Gray
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(
+                                AutoSizeText(
                                     text = formattedBalance,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    baseFontSize = 14f,
                                     color = NegativeRed
                                 )
                             }
@@ -299,7 +285,6 @@ fun ReportsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 1. Circular WhatsApp Icon (Primary Purple tint) to trigger link
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -334,7 +319,6 @@ fun ReportsScreen(
                                     )
                                 }
 
-                                // 2. Circular Phone Icon to dial
                                 Box(
                                     modifier = Modifier
                                         .size(40.dp)
@@ -370,7 +354,6 @@ fun ReportsScreen(
             }
         }
 
-        // C. Footer Section: "Report Export" (تصدير كشف شامل)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -389,10 +372,10 @@ fun ReportsScreen(
                     .height(50.dp)
                     .testTag("export_pdf_button"),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                shape = RoundedCornerShape(25.dp) // Perfect pill shape
+                shape = RoundedCornerShape(25.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.PictureAsPdf, 
+                    imageVector = Icons.Default.Share, 
                     contentDescription = "Export PDF", 
                     modifier = Modifier.size(20.dp),
                     tint = Color.White
@@ -409,7 +392,6 @@ fun ReportsScreen(
     }
 }
 
-// Native PDF Generator
 private fun generatePdfReport(
     context: Context,
     totalDebt: Double,
@@ -425,7 +407,7 @@ private fun generatePdfReport(
 
         val titlePaint = Paint().apply {
             textSize = 24f
-            color = 0xFF6C5CE7.toInt()
+            color = 0xFF5F4BDB.toInt()
             isFakeBoldText = true
             textAlign = Paint.Align.RIGHT
         }
@@ -512,7 +494,7 @@ private fun generatePdfReport(
 
         val pdfUri = FileProvider.getUriForFile(
             context,
-            "${context.packageName}.fileprovider",
+            "com.example.fileprovider",
             pdfFile
         )
 

@@ -6,41 +6,28 @@ import com.example.data.model.Transaction
 import kotlinx.coroutines.flow.Flow
 
 class CustomerRepository(private val customerDao: CustomerDao) {
+
     val allCustomers: Flow<List<Customer>> = customerDao.getAllCustomers()
     val allTransactions: Flow<List<Transaction>> = customerDao.getAllTransactions()
 
-    fun getTransactionsForCustomer(customerId: Int): Flow<List<Transaction>> =
-        customerDao.getTransactionsForCustomer(customerId)
-
-    suspend fun getCustomerById(id: Int): Customer? =
-        customerDao.getCustomerById(id)
-
-    suspend fun getTransactionById(id: Int): Transaction? =
-        customerDao.getTransactionById(id)
-
-    suspend fun insertCustomer(customer: Customer): Long =
-        customerDao.insertCustomer(customer)
-
-    suspend fun updateCustomer(customer: Customer) {
-        customerDao.updateCustomer(customer)
+    suspend fun addCustomer(customer: Customer): Long {
+        return customerDao.insertCustomer(customer)
     }
 
     suspend fun deleteCustomer(customer: Customer) {
-        customerDao.deleteCustomerWithTransactions(customer)
+        customerDao.deleteTransactionsByCustomer(customer.id)
+        customerDao.deleteCustomer(customer)
     }
 
-    suspend fun insertTransaction(transaction: Transaction): Long =
-        customerDao.insertTransaction(transaction)
-
-    suspend fun updateTransaction(transaction: Transaction) {
-        customerDao.updateTransaction(transaction)
+    suspend fun addTransaction(transaction: Transaction): Long {
+        return customerDao.insertTransaction(transaction)
     }
 
     suspend fun deleteTransaction(transaction: Transaction) {
         customerDao.deleteTransaction(transaction)
     }
 
-    suspend fun clearAllData() {
-        customerDao.clearAllData()
+    fun getTransactionsByCustomer(customerId: Long): Flow<List<Transaction>> {
+        return customerDao.getTransactionsByCustomer(customerId)
     }
 }
